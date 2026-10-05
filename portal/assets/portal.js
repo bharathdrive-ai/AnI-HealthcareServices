@@ -1,6 +1,20 @@
 /* JAC Hospital Portal — shared shell, data store and UI helpers.
    Data lives in localStorage (per browser) and is seeded from data.js. */
 (function(){
+/* Theme: same "jac.theme" choice as the public site; applied before the page paints. */
+const THEME_KEY="jac.theme";
+const sysDark=window.matchMedia("(prefers-color-scheme: dark)");
+const theme={
+  current(){return document.documentElement.getAttribute("data-theme")||(sysDark.matches?"dark":"light");},
+  apply(){let t=null;try{t=localStorage.getItem(THEME_KEY);}catch(e){}document.documentElement.setAttribute("data-theme",t==="dark"||t==="light"?t:(sysDark.matches?"dark":"light"));},
+  toggle(){const n=theme.current()==="dark"?"light":"dark";try{localStorage.setItem(THEME_KEY,n);}catch(e){}document.documentElement.setAttribute("data-theme",n);theme.label();},
+  label(){const b=document.getElementById("themeBtn");if(b)b.setAttribute("aria-label",theme.current()==="dark"?"Switch to light theme":"Switch to dark theme");},
+  bind(){const b=document.getElementById("themeBtn");if(b){b.onclick=theme.toggle;theme.label();}},
+};
+theme.apply();
+sysDark.addEventListener("change",()=>{let t=null;try{t=localStorage.getItem(THEME_KEY);}catch(e){}if(!t){theme.apply();theme.label();}});
+window.addEventListener("storage",e=>{if(e.key===THEME_KEY){theme.apply();theme.label();}});
+
 const PAGES=[
   {no:"01",file:"dashboard.html",mod:"Dashboard",title:"Dashboard",group:"Overview"},
   {no:"02",file:"administration.html",mod:"Administration",title:"Administration",group:"Overview"},
@@ -316,8 +330,8 @@ function shell(){
   const isAdmin=user.role==="ROL0001";
   const app=document.createElement("div");app.className="app";
   app.innerHTML=`<aside class="side" id="side">
-      <a class="brand" href="${esc((auth.firstAllowed()||PAGES[0]).file)}"><svg width="34" height="34" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="19.5" fill="none" stroke="#d6a35c" stroke-width="1.5"/><path d="M17 9h8v8h8v8h-8v8h-8v-8H9v-8h8z" fill="#5cc0aa"/></svg>
-        <span><b>JAC Portal</b><small>HOSPITAL &amp; COLLEGE</small></span></a>
+      <a class="brand" href="${esc((auth.firstAllowed()||PAGES[0]).file)}"><span class="brand-logo"><picture><source srcset="../assets/jac-logo-96.webp 1x, ../assets/jac-logo-160.webp 2x" type="image/webp"><img src="../assets/jac-logo-96.png" width="78" height="34" alt="JAC logo"></picture></span>
+        <span><b>Staff Portal</b><small>MEDICAL COLLEGE &amp; HOSPITAL</small></span></a>
       <nav aria-label="Portal">${groups.map(g=>`<div class="group">${esc(g)}</div>`+visible.filter(p=>p.group===g).map(p=>`<a href="${p.file}" ${p===page?'aria-current="page"':""}><span class="no">${p.no}</span>${esc(p.title)}</a>`).join("")).join("")}
         <div class="group">Account</div>
         ${isAdmin?`<a href="#" id="resetData"><span class="no">↺</span>Reset sample data</a>`:""}
@@ -329,6 +343,7 @@ function shell(){
       <div style="min-width:0"><div class="crumb">${page.no} · ${esc(page.group)}${auth.can(page.mod)&&!canDo("add")&&!canDo("edit")?' · <span class="pill">View only</span>':""}</div><h1>${esc(page.title)}</h1></div>
       <span class="spacer"></span>
       <span class="muted mono clock" id="clock"></span>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch to dark theme" title="Switch theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg></button>
       <div class="who-menu">
         <button class="who" id="whoBtn" aria-haspopup="true" aria-expanded="false"><span class="av">${esc(initials(user.name))}</span><span class="who-text"><b>${esc(user.name)}</b><small>${esc(role?.name||"")}</small></span></button>
         <div class="who-pop" id="whoPop" hidden>
@@ -360,6 +375,7 @@ function shell(){
   app.querySelector("#signOutSide").onclick=e=>{e.preventDefault();auth.signOut("signedout");};
   const rd=app.querySelector("#resetData");
   if(rd) rd.onclick=async e=>{e.preventDefault();if(await confirmBox("Reset sample data?","All changes made in this browser, including users and passwords, will be replaced with the original sample data.","Reset")){db.reset();location.reload();}};
+  theme.bind();
   const clock=app.querySelector("#clock");
   const tick=()=>clock.textContent=new Date().toLocaleString("en-IN",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
   tick();setInterval(tick,30000);
@@ -372,6 +388,6 @@ function shell(){
   window.addEventListener("storage",e=>{if(e.key===SESSION_KEY&&!auth.session())location.replace("login.html");});
 }
 
-window.Portal={PAGES,db,esc,isoLocal,today,addDays,fmtDate,inr,num,daysBetween,uid,pill,toast,opts,modal,confirmBox,formHTML,readForm,crud,kpis,barChart,hbars,tabs,lookup,shell,auth,audit,can:canDo};
+window.Portal={PAGES,db,esc,isoLocal,today,addDays,fmtDate,inr,num,daysBetween,uid,pill,toast,opts,modal,confirmBox,formHTML,readForm,crud,kpis,barChart,hbars,tabs,lookup,shell,auth,audit,can:canDo,theme};
 document.addEventListener("DOMContentLoaded",shell);
 })();

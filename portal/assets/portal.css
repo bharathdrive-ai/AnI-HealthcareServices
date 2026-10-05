@@ -1,26 +1,28 @@
 /* JAC Hospital Portal — shared styles. Layout: fixed sidebar + topbar + content grid. */
+/* Palette from the JAC logo, shared with the public site: royal blue, orange, teal, leaf green. */
 :root{
-  --bg:#f3f6f5; --surface:#ffffff; --surface-2:#f8faf9;
-  --ink:#10221e; --muted:#5a6f6a; --line:#dbe4e1;
-  --scrub:#1f6f61; --scrub-soft:#e2efeb; --brass:#a7712a;
-  --ok:#2c7a3f; --ok-soft:#e3f2e6; --warn:#a96a10; --warn-soft:#fbf0dc;
-  --alert:#c2362b; --alert-soft:#fbe9e7; --info:#2a5d9f; --info-soft:#e4ecf7;
-  --side:#10221e; --side-ink:#cfe0db; --side-active:#1f6f61;
+  --bg:#f3f6fb; --surface:#ffffff; --surface-2:#f6f9fd;
+  --ink:#0b1d36; --muted:#4a5d7c; --line:#d7e1ee;
+  --scrub:#0b5cc0; --scrub-soft:#e4eefb; --brass:#b04500; --orange:#f07818;
+  --teal:#0a9bb0; --leaf:#5aa52c; --on-accent:#ffffff;
+  --ok:#1a6e2f; --ok-soft:#e3f3e7; --warn:#9c5a00; --warn-soft:#fdf0dc;
+  --alert:#c62a2a; --alert-soft:#fde8e8; --info:#076474; --info-soft:#def3f6;
+  --side:#0b1d36; --side-ink:#c9d6ea; --side-active:#0b5cc0;
   --f-display:"Young Serif", Georgia, serif;
   --f-body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
   --r:8px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0c1513;--surface:#13201d;--surface-2:#172723;--ink:#e3ece9;--muted:#93a8a2;--line:#24372f;
-  --scrub:#5cc0aa;--scrub-soft:#173a33;--brass:#d6a35c;
-  --ok:#6fcf86;--ok-soft:#183324;--warn:#e7b25a;--warn-soft:#3a2c14;--alert:#ff6b5e;--alert-soft:#3a1714;--info:#7fb0f0;--info-soft:#172a44;
-  --side:#08100e;--side-ink:#b5cbc5;--side-active:#1f6f61;color-scheme:dark}}
+  --bg:#081426;--surface:#0f2140;--surface-2:#132748;--ink:#eaf1fb;--muted:#a9bbd6;--line:#22395e;
+  --scrub:#5ba8ff;--scrub-soft:#12305a;--brass:#ff9a4d;--orange:#ff9a4d;--teal:#33c6d9;--leaf:#8bd05a;--on-accent:#06121f;
+  --ok:#6fd38a;--ok-soft:#153a24;--warn:#f0b65a;--warn-soft:#3a2c12;--alert:#ff6b61;--alert-soft:#3d1616;--info:#4fd0e0;--info-soft:#0e3540;
+  --side:#050d1a;--side-ink:#b9c8de;--side-active:#1d5fb8;color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0c1513;--surface:#13201d;--surface-2:#172723;--ink:#e3ece9;--muted:#93a8a2;--line:#24372f;
-  --scrub:#5cc0aa;--scrub-soft:#173a33;--brass:#d6a35c;
-  --ok:#6fcf86;--ok-soft:#183324;--warn:#e7b25a;--warn-soft:#3a2c14;--alert:#ff6b5e;--alert-soft:#3a1714;--info:#7fb0f0;--info-soft:#172a44;
-  --side:#08100e;--side-ink:#b5cbc5;--side-active:#1f6f61;color-scheme:dark}
+  --bg:#081426;--surface:#0f2140;--surface-2:#132748;--ink:#eaf1fb;--muted:#a9bbd6;--line:#22395e;
+  --scrub:#5ba8ff;--scrub-soft:#12305a;--brass:#ff9a4d;--orange:#ff9a4d;--teal:#33c6d9;--leaf:#8bd05a;--on-accent:#06121f;
+  --ok:#6fd38a;--ok-soft:#153a24;--warn:#f0b65a;--warn-soft:#3a2c12;--alert:#ff6b61;--alert-soft:#3d1616;--info:#4fd0e0;--info-soft:#0e3540;
+  --side:#050d1a;--side-ink:#b9c8de;--side-active:#1d5fb8;color-scheme:dark}
 
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -66,7 +68,7 @@ h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
 /* Buttons & inputs */
 .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .9rem;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:600;font-size:.85rem;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--scrub)}
-.btn.primary{background:var(--scrub);border-color:var(--scrub);color:var(--bg)}
+.btn.primary{background:var(--scrub);border-color:var(--scrub);color:var(--on-accent)}
 .btn.danger{color:var(--alert)}
 .btn.sm{padding:.25rem .55rem;font-size:.78rem}
 .btn.link{border:0;background:none;color:var(--scrub);padding:.2rem .3rem}
@@ -153,14 +155,14 @@ dialog .mf{display:flex;justify-content:flex-end;gap:.5rem;padding:.8rem 1.1rem;
 .cal .dh{background:var(--surface-2);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.4rem;text-align:center;font-weight:600}
 .cal .d{background:var(--surface);min-height:78px;padding:.35rem .4rem;font-size:.75rem;min-width:0}
 .cal .d.out{background:var(--surface-2);color:var(--muted)}
-.cal .d.today .dn{background:var(--scrub);color:var(--bg);border-radius:4px;padding:0 .3rem}
+.cal .d.today .dn{background:var(--scrub);color:var(--on-accent);border-radius:4px;padding:0 .3rem}
 .cal .d .ev{display:block;margin-top:.2rem;padding:.1rem .3rem;border-radius:3px;background:var(--alert-soft);color:var(--alert);font-size:.68rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal .d .ev.dept{background:var(--warn-soft);color:var(--warn)}
 .cal .d .ev.inst{background:var(--info-soft);color:var(--info)}
 .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:.45rem}
 .slot{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:.45rem 0;font-family:var(--f-mono);font-size:.8rem;cursor:pointer}
 .slot:disabled{background:var(--surface-2);color:var(--muted);text-decoration:line-through;cursor:not-allowed}
-.slot[aria-pressed="true"]{background:var(--scrub);border-color:var(--scrub);color:var(--bg)}
+.slot[aria-pressed="true"]{background:var(--scrub);border-color:var(--scrub);color:var(--on-accent)}
 
 /* Bed board */
 .beds{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:.4rem}
@@ -248,3 +250,21 @@ button.who:hover{border-color:var(--line)}
 .split-7-5{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
 .split-5-7{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}
 @media (max-width:1000px){.split-7-5,.split-5-7{grid-template-columns:1fr}}
+
+/* JAC branding: logo badge, logo-wave stripe, theme switch */
+.brand-logo{background:#fff;border-radius:8px;padding:4px 7px;display:inline-flex;flex:none}
+.brand-logo img{height:34px;width:auto;display:block}
+.side .brand{gap:.65rem}
+.top{border-bottom:0}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--scrub) 0%,var(--teal) 45%,var(--leaf) 70%,var(--orange) 100%)}
+.theme-btn{display:inline-grid;place-items:center;width:36px;height:36px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.theme-btn:hover{border-color:var(--scrub);color:var(--scrub)}
+.theme-btn svg{width:18px;height:18px}
+.theme-btn .moon{display:none}
+:root[data-theme="dark"] .theme-btn .sun{display:none}
+:root[data-theme="dark"] .theme-btn .moon{display:block}
+.login-brand{background:linear-gradient(160deg,#0b1d36 0%,#0b3a73 60%,#0a6f86 100%)}
+.login-brand .brand-logo img{height:52px}
+.login-brand .back-public{color:#7fd3e0}
+.login-main{position:relative}
+.login-main .theme-btn{position:absolute;top:1rem;right:16px}
