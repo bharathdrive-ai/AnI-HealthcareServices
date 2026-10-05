@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JAC Medical College &amp; Hospital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a teaching hospital's notice board. Two halves (Hospital / College) share one spine; the OPD board is the hero. */
+:root{
+  --bg:#f6f8f7;          /* ward white, slightly green */
+  --surface:#ffffff;
+  --ink:#10221e;         /* deep scrub ink */
+  --muted:#556b66;
+  --line:#d6e0dd;
+  --scrub:#1f6f61;       /* surgical green, the accent */
+  --scrub-soft:#e2efeb;
+  --brass:#a7712a;       /* college crest, used sparingly */
+  --alert:#c2362b;       /* emergency only */
+  --alert-soft:#fbe9e7;
+  --ok:#2c7a3f;
+  --f-display:"Young Serif", Georgia, "Times New Roman", serif;
+  --f-body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1715;--surface:#13211e;--ink:#e3ece9;--muted:#93a8a2;--line:#24372f;
+  --scrub:#5cc0aa;--scrub-soft:#173a33;--brass:#d6a35c;--alert:#ff6b5e;--alert-soft:#3a1714;--ok:#6fcf86;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1715;--surface:#13211e;--ink:#e3ece9;--muted:#93a8a2;--line:#24372f;
+  --scrub:#5cc0aa;--scrub-soft:#173a33;--brass:#d6a35c;--alert:#ff6b5e;--alert-soft:#3a1714;--ok:#6fcf86;color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6}
+a{color:var(--scrub)}
+:focus-visible{outline:2px solid var(--scrub);outline-offset:2px}
+.wrap{max-width:1180px;margin-inline:auto;padding-inline:20px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;line-height:1.15;text-wrap:balance;margin:0}
+h2{font-size:clamp(1.7rem,3.2vw,2.4rem)}
+h3{font-size:1.2rem}
+p{margin:0}
+.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--scrub)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.15rem;border-radius:var(--r);font-weight:600;font-size:.95rem;text-decoration:none;border:1.5px solid var(--scrub);cursor:pointer;font-family:inherit}
+.btn-solid{background:var(--scrub);color:var(--bg)}
+.btn-ghost{background:transparent;color:var(--scrub)}
+.btn:hover{filter:brightness(1.08)}
+
+/* Emergency strip */
+.er{background:var(--alert);color:#fff;font-size:.9rem}
+.er .wrap{display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;align-items:center;justify-content:space-between;padding-block:.45rem}
+.er strong{letter-spacing:.04em}
+.er .mono{font-weight:600}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;margin-right:.5rem;animation:p 1.6s infinite}
+@keyframes p{50%{opacity:.25}}
+
+/* Header */
+header.site{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding-block:.8rem}
+.brand{display:flex;align-items:center;gap:.7rem;text-decoration:none;color:var(--ink)}
+.crest{width:42px;height:42px;flex:none}
+.brand b{font-family:var(--f-display);font-weight:400;font-size:1.15rem;display:block;line-height:1.1}
+.brand small{font-size:.72rem;color:var(--muted);letter-spacing:.04em}
+nav.main{display:flex;gap:1.4rem;align-items:center}
+nav.main a{color:var(--ink);text-decoration:none;font-weight:500;font-size:.95rem}
+nav.main a:hover{color:var(--scrub)}
+.menu-btn{display:none;background:none;border:1px solid var(--line);border-radius:var(--r);padding:.4rem .7rem;color:var(--ink);font:inherit}
+@media (max-width:900px){
+  nav.main{display:none;position:absolute;left:0;right:0;top:100%;flex-direction:column;align-items:stretch;gap:0;background:var(--surface);border-bottom:1px solid var(--line);padding:.5rem 20px}
+  nav.main.open{display:flex}
+  nav.main a{padding:.7rem 0;border-bottom:1px solid var(--line)}
+  .menu-btn{display:block}
+}
+
+/* Hero */
+.hero{padding-block:3.5rem 3rem}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:3rem;align-items:start}
+.hero h1{font-size:clamp(2.3rem,5vw,3.7rem)}
+.hero h1 em{font-style:normal;color:var(--scrub)}
+.hero .lede{font-size:1.12rem;color:var(--muted);max-width:52ch;margin-top:1.1rem}
+.hero .ctas{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.6rem}
+.accred{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem}
+.accred span{font-size:.78rem;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:.25rem .7rem;color:var(--muted)}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}}
+
+/* OPD board */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0}
+.board-head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;padding:1rem 1.2rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.board-head h3{font-size:1.1rem}
+.board-head .mono{font-size:.8rem;color:var(--muted)}
+.board-scroll{overflow-x:auto}
+table.opd{width:100%;border-collapse:collapse;font-size:.9rem}
+table.opd th{text-align:left;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:.6rem 1.2rem;background:var(--scrub-soft)}
+table.opd td{padding:.65rem 1.2rem;border-top:1px solid var(--line);white-space:nowrap}
+.status{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600}
+.status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-open{color:var(--ok)}.s-closed{color:var(--muted)}.s-busy{color:var(--brass)}
+.board-foot{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.board-foot div{padding:.9rem 1.2rem}
+.board-foot div+div{border-left:1px solid var(--line)}
+.board-foot .n{font-family:var(--f-mono);font-size:1.35rem;font-weight:600}
+.board-foot .l{font-size:.75rem;color:var(--muted)}
+
+/* Split: Hospital | College */
+.split{border-block:1px solid var(--line);background:var(--surface)}
+.split .wrap{display:grid;grid-template-columns:1fr 1fr}
+.split a{display:block;padding:2rem 2rem 2rem 0;text-decoration:none;color:var(--ink)}
+.split a+a{padding-left:2rem;border-left:1px solid var(--line)}
+.split h3{font-size:1.5rem;margin-top:.3rem}
+.split p{color:var(--muted);margin-top:.5rem;max-width:44ch}
+.split .go{color:var(--scrub);font-weight:600;margin-top:.8rem;display:inline-block}
+@media (max-width:700px){.split .wrap{grid-template-columns:1fr}.split a,.split a+a{padding:1.5rem 0;border-left:0}.split a+a{border-top:1px solid var(--line)}}
+
+section.block{padding-block:4.5rem}
+.sec-head{display:flex;justify-content:space-between;align-items:end;gap:1.5rem;flex-wrap:wrap;margin-bottom:2rem}
+.sec-head p{max-width:56ch;color:var(--muted);margin-top:.6rem}
+
+/* Departments */
+.depts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.dept{background:var(--surface);padding:1.3rem 1.3rem 1.2rem;display:flex;flex-direction:column;gap:.45rem}
+.dept .code{font-family:var(--f-mono);font-size:.72rem;color:var(--scrub);letter-spacing:.06em}
+.dept p{font-size:.9rem;color:var(--muted)}
+.dept .days{font-family:var(--f-mono);font-size:.75rem;color:var(--ink);margin-top:auto;padding-top:.5rem;display:flex;gap:.3rem;flex-wrap:wrap}
+.days i{font-style:normal;padding:.1rem .35rem;border-radius:3px;background:var(--scrub-soft)}
+.days i.off{background:transparent;color:var(--muted);text-decoration:line-through}
+
+/* Doctors */
+.filters{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.2rem}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.35rem .9rem;font:inherit;font-size:.85rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--scrub);border-color:var(--scrub);color:var(--bg)}
+.search{flex:1 1 220px;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.35rem 1rem;font:inherit;font-size:.9rem}
+.docs{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1rem}
+.doc{display:grid;grid-template-columns:52px 1fr;gap:.9rem;align-items:start;padding:1rem;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.avatar{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-size:1.1rem;background:var(--scrub-soft);color:var(--scrub)}
+.doc b{display:block}
+.doc .q{font-size:.8rem;color:var(--muted)}
+.doc .meta{display:flex;gap:.8rem;flex-wrap:wrap;font-size:.78rem;margin-top:.45rem}
+.doc .meta .mono{color:var(--scrub)}
+.doc button{margin-top:.6rem;background:none;border:0;padding:0;color:var(--scrub);font:inherit;font-weight:600;font-size:.85rem;cursor:pointer}
+.empty{padding:2rem;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+
+/* Appointment */
+.appt{background:var(--scrub-soft)}
+.appt .wrap{display:grid;grid-template-columns:.8fr 1.2fr;gap:3rem;align-items:start}
+.appt ul{padding-left:1.1rem;margin:1.2rem 0 0;color:var(--muted)}
+.appt li+li{margin-top:.4rem}
+form.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.field{display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.field.full{grid-column:1/-1}
+label{font-size:.8rem;font-weight:600}
+input,select,textarea{font:inherit;font-size:.95rem;padding:.6rem .7rem;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--ink);width:100%}
+textarea{resize:vertical;min-height:80px}
+.err{font-size:.78rem;color:var(--alert);min-height:1em}
+.done{grid-column:1/-1;padding:1rem;border-radius:var(--r);background:var(--scrub-soft);border:1px solid var(--scrub)}
+.done .mono{font-weight:600;color:var(--scrub)}
+@media (max-width:900px){.appt .wrap{grid-template-columns:1fr}}
+@media (max-width:520px){form.card{grid-template-columns:1fr}}
+
+/* College */
+.college-intro{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:end;margin-bottom:2.5rem}
+.college-intro .big{font-family:var(--f-display);font-size:clamp(1.3rem,2.4vw,1.7rem);line-height:1.35}
+@media (max-width:800px){.college-intro{grid-template-columns:1fr;gap:1rem}}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.prog{width:100%;border-collapse:collapse;font-size:.92rem;min-width:720px}
+table.prog th{text-align:left;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:.8rem 1.1rem;border-bottom:1px solid var(--line)}
+table.prog td{padding:.9rem 1.1rem;border-bottom:1px solid var(--line);vertical-align:top}
+table.prog tr:last-child td{border-bottom:0}
+table.prog td:first-child b{font-family:var(--f-display);font-weight:400;font-size:1.05rem}
+table.prog .num{font-family:var(--f-mono);text-align:right}
+.tag{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--brass)}
+
+/* Admission steps */
+.steps{list-style:none;padding:0;margin:2.5rem 0 0;display:grid;grid-template-columns:repeat(5,1fr);gap:0;counter-reset:s;border-top:2px solid var(--brass)}
+.steps li{padding:1rem 1rem 0 0;counter-increment:s;position:relative}
+.steps li::before{content:counter(s);font-family:var(--f-mono);font-size:.75rem;font-weight:600;color:var(--brass);display:block;margin-bottom:.4rem}
+.steps li::after{content:"";position:absolute;top:-7px;left:0;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--brass)}
+.steps b{display:block;font-size:.95rem}
+.steps span{font-size:.85rem;color:var(--muted)}
+.steps .when{font-family:var(--f-mono);font-size:.75rem;color:var(--ink);display:block;margin-top:.3rem}
+@media (max-width:800px){.steps{grid-template-columns:1fr;border-top:0;border-left:2px solid var(--brass);padding-left:1.2rem}.steps li{padding:0 0 1.2rem}.steps li::after{top:4px;left:calc(-1.2rem - 7px)}}
+
+/* Numbers */
+.figures{display:grid;grid-template-columns:repeat(4,1fr);border-block:1px solid var(--line)}
+.figures div{padding:1.6rem 1.2rem}
+.figures div+div{border-left:1px solid var(--line)}
+.figures .n{font-family:var(--f-display);font-size:2.4rem;line-height:1}
+.figures .l{font-size:.85rem;color:var(--muted);margin-top:.4rem}
+@media (max-width:700px){.figures{grid-template-columns:1fr 1fr}.figures div:nth-child(3){border-left:0}.figures div:nth-child(n+3){border-top:1px solid var(--line)}}
+
+/* Notices */
+.notices{display:grid;grid-template-columns:1fr 1fr;gap:3rem}
+.notice-list{list-style:none;padding:0;margin:0}
+.notice-list li{display:grid;grid-template-columns:88px 1fr;gap:1rem;padding:.9rem 0;border-bottom:1px solid var(--line)}
+.notice-list .mono{font-size:.8rem;color:var(--muted);padding-top:.15rem}
+.notice-list .k{font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--scrub);margin-right:.4rem}
+.notice-list .k.c{color:var(--brass)}
+@media (max-width:800px){.notices{grid-template-columns:1fr}}
+
+/* Contact / footer */
+footer{background:var(--ink);color:var(--bg);padding-block:3.5rem 2rem}
+footer .grid{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:2rem}
+footer h4{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;margin:0 0 .8rem;opacity:.7;font-weight:600}
+footer p,footer li{font-size:.9rem;opacity:.9}
+footer ul{list-style:none;padding:0;margin:0;display:grid;gap:.35rem}
+footer a{color:inherit}
+.copyrow{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.copy{background:transparent;border:1px solid color-mix(in srgb,var(--bg) 40%,transparent);color:inherit;border-radius:4px;font:inherit;font-size:.72rem;padding:.1rem .45rem;cursor:pointer}
+.legal{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid color-mix(in srgb,var(--bg) 20%,transparent);font-size:.8rem;opacity:.65;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+@media (max-width:800px){footer .grid{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){footer .grid{grid-template-columns:1fr}}
+</style>
+
+</head>
+<body>
+<div class="er" role="region" aria-label="Emergency">
+  <div class="wrap">
+    <span><span class="pulse" aria-hidden="true"></span><strong>24×7 EMERGENCY &amp; TRAUMA</strong> · Casualty entrance on Gate 2</span>
+    <span>Ambulance <span class="mono">108</span> · Casualty desk <span class="mono">+91 80 4000 1000</span></span>
+  </div>
+</div>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="JAC Medical College and Hospital, home">
+      <svg class="crest" viewBox="0 0 42 42" aria-hidden="true">
+        <circle cx="21" cy="21" r="19.5" fill="none" stroke="var(--brass)" stroke-width="1.5"/>
+        <path d="M17 9h8v8h8v8h-8v8h-8v-8H9v-8h8z" fill="var(--scrub)"/>
+        <circle cx="21" cy="21" r="2.6" fill="var(--bg)"/>
+      </svg>
+      <span><b>JAC</b><small>MEDICAL COLLEGE &amp; HOSPITAL</small></span>
+    </a>
+    <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mainNav">Menu</button>
+    <nav class="main" id="mainNav">
+      <a href="#departments">Departments</a>
+      <a href="#doctors">Doctors</a>
+      <a href="#college">College</a>
+      <a href="#admissions">Admissions</a>
+      <a href="#notices">Notices</a>
+      <a class="btn btn-solid" href="#appointment">Book appointment</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Teaching hospital · Est. 1987</p>
+        <h1 style="margin-top:.7rem">Where tomorrow's doctors learn at <em>today's bedside.</em></h1>
+        <p class="lede">A 1,050-bed tertiary care hospital and a medical college under one roof. Every patient is seen by a consultant, and every student trains on real wards from the first year.</p>
+        <div class="ctas">
+          <a class="btn btn-solid" href="#appointment">Book an OPD visit</a>
+          <a class="btn btn-ghost" href="#admissions">Admissions 2027</a>
+        </div>
+        <div class="accred" aria-label="Accreditations">
+          <span>NMC recognised</span><span>NABH accredited</span><span>NAAC A+</span><span>Affiliated to State Health University</span>
+        </div>
+      </div>
+
+      <aside class="board" aria-label="Today's OPD board">
+        <div class="board-head">
+          <h3>Today's OPD</h3>
+          <span class="mono" id="today">—</span>
+        </div>
+        <div class="board-scroll">
+          <table class="opd">
+            <thead><tr><th>Department</th><th>Block</th><th>Hours</th><th>Status</th></tr></thead>
+            <tbody id="opdBody"></tbody>
+          </table>
+        </div>
+        <div class="board-foot">
+          <div><div class="n">1,050</div><div class="l">Beds</div></div>
+          <div><div class="n">96</div><div class="l">ICU beds</div></div>
+          <div><div class="n">14</div><div class="l">Operating theatres</div></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="split">
+    <div class="wrap">
+      <a href="#departments">
+        <span class="eyebrow">For patients</span>
+        <h3>The Hospital</h3>
+        <p>32 specialities, a level-1 trauma centre, a 24-hour pharmacy and lab, and cashless care under major insurance and government schemes.</p>
+        <span class="go">Find a department →</span>
+      </a>
+      <a href="#college">
+        <span class="eyebrow" style="color:var(--brass)">For students</span>
+        <h3>The College</h3>
+        <p>MBBS, postgraduate MD/MS, nursing and allied health programmes, taught by the same consultants who run the wards.</p>
+        <span class="go">See programmes →</span>
+      </a>
+    </div>
+  </div>
+
+  <section class="block" id="departments">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Clinical departments</p>
+          <h2 style="margin-top:.5rem">Departments and OPD days</h2>
+          <p>Outpatient registration opens at 8:00 AM and closes at 1:00 PM. Bring a photo ID and any earlier reports or prescriptions.</p>
+        </div>
+      </div>
+      <div class="depts" id="deptGrid"></div>
+    </div>
+  </section>
+
+  <section class="block" id="doctors" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Find a doctor</p>
+          <h2 style="margin-top:.5rem">Consultants and faculty</h2>
+        </div>
+      </div>
+      <div class="filters" id="filters">
+        <input class="search" id="docSearch" type="search" placeholder="Search by name or speciality" aria-label="Search doctors">
+      </div>
+      <div class="docs" id="docGrid"></div>
+    </div>
+  </section>
+
+  <section class="block appt" id="appointment">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Outpatient appointment</p>
+        <h2 style="margin-top:.5rem">Request an OPD slot</h2>
+        <p class="muted" style="margin-top:.8rem">Pick a department and a date. The OPD desk confirms your token number by SMS before your visit.</p>
+        <ul>
+          <li>Arrive 20 minutes before your slot for registration.</li>
+          <li>Follow-up visits within 14 days need no new registration fee.</li>
+          <li>For chest pain, breathlessness or injury, go straight to Casualty.</li>
+        </ul>
+      </div>
+      <form class="card" id="apptForm" novalidate>
+        <div class="field"><label for="pName">Patient name</label><input id="pName" autocomplete="name"><span class="err" id="eName"></span></div>
+        <div class="field"><label for="pPhone">Mobile number</label><input id="pPhone" inputmode="numeric" placeholder="10-digit mobile" autocomplete="tel"><span class="err" id="ePhone"></span></div>
+        <div class="field"><label for="pDept">Department</label><select id="pDept"></select><span class="err" id="eDept"></span></div>
+        <div class="field"><label for="pDate">Preferred date</label><input id="pDate" type="date"><span class="err" id="eDate"></span></div>
+        <div class="field full"><label for="pNote">Reason for visit (optional)</label><textarea id="pNote" placeholder="e.g. knee pain for three weeks"></textarea></div>
+        <div class="field full"><button class="btn btn-solid" type="submit" style="justify-self:start">Request appointment</button></div>
+        <div class="done" id="apptDone" hidden></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="block" id="college">
+    <div class="wrap">
+      <div class="college-intro">
+        <div>
+          <p class="eyebrow" style="color:var(--brass)">JAC Medical College</p>
+          <h2 style="margin-top:.5rem">Programmes</h2>
+        </div>
+        <p class="big">Students see their first patient in the first semester, under supervision, in the hospital next door.</p>
+      </div>
+      <div class="table-wrap">
+        <table class="prog">
+          <thead><tr><th>Programme</th><th>Duration</th><th>Entry</th><th style="text-align:right">Seats / year</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag">Undergraduate</span><br><b>MBBS</b></td><td>4.5 years + 1-year internship</td><td>NEET-UG, state &amp; MCC counselling</td><td class="num">150</td></tr>
+            <tr><td><span class="tag">Postgraduate</span><br><b>MD / MS</b> · 18 specialities</td><td>3 years</td><td>NEET-PG</td><td class="num">94</td></tr>
+            <tr><td><span class="tag">Super speciality</span><br><b>DM / MCh</b> · Cardiology, Neurology, Urology, CTVS</td><td>3 years</td><td>NEET-SS</td><td class="num">12</td></tr>
+            <tr><td><span class="tag">Nursing</span><br><b>B.Sc Nursing</b></td><td>4 years</td><td>10+2 with PCB, state entrance</td><td class="num">100</td></tr>
+            <tr><td><span class="tag">Allied health</span><br><b>B.Sc</b> · MLT, Radiology, Anaesthesia &amp; OT, Optometry</td><td>3 years + 1-year internship</td><td>10+2 with PCB, merit</td><td class="num">160</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="admissions" style="margin-top:4rem">
+        <p class="eyebrow" style="color:var(--brass)">Admissions 2027</p>
+        <h2 style="margin-top:.5rem">How MBBS admission works</h2>
+        <ol class="steps">
+          <li><b>Qualify NEET-UG</b><span>Meet the NTA qualifying percentile.</span><span class="when">May 2027</span></li>
+          <li><b>Register for counselling</b><span>MCC for all-India quota, state portal for state quota.</span><span class="when">Jul 2027</span></li>
+          <li><b>Choice filling</b><span>List JAC Medical College among your preferences.</span><span class="when">Jul–Aug 2027</span></li>
+          <li><b>Seat allotment</b><span>Report with original documents and fee.</span><span class="when">Aug 2027</span></li>
+          <li><b>Foundation course</b><span>Classes begin with the NMC foundation module.</span><span class="when">Sep 2027</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="figures">
+      <div><div class="n mono">38</div><div class="l">Years of teaching</div></div>
+      <div><div class="n mono">420</div><div class="l">Faculty members</div></div>
+      <div><div class="n mono">2,400+</div><div class="l">Students on campus</div></div>
+      <div><div class="n mono">3.2 lakh</div><div class="l">OPD visits last year</div></div>
+    </div>
+  </div>
+
+  <section class="block" id="notices">
+    <div class="wrap notices">
+      <div>
+        <p class="eyebrow">Notice board</p>
+        <h2 style="margin-top:.5rem">Latest updates</h2>
+        <ul class="notice-list" style="margin-top:1.5rem">
+          <li><span class="mono">02 Oct 26</span><span><span class="k">Hospital</span>Free diabetic retinopathy screening camp, Eye OPD, every Saturday in October.</span></li>
+          <li><span class="mono">28 Sep 26</span><span><span class="k c">College</span>MBBS Phase I internal assessment timetable published.</span></li>
+          <li><span class="mono">21 Sep 26</span><span><span class="k">Hospital</span>New 24-bed paediatric ICU opens in Block C.</span></li>
+          <li><span class="mono">15 Sep 26</span><span><span class="k c">College</span>CME on antimicrobial stewardship, 18 Oct, Main Auditorium. 4 credit hours.</span></li>
+        </ul>
+      </div>
+      <div>
+        <p class="eyebrow">Visiting the campus</p>
+        <h2 style="margin-top:.5rem">Visitor hours</h2>
+        <ul class="notice-list" style="margin-top:1.5rem">
+          <li><span class="mono">Wards</span><span>4:00 – 7:00 PM daily. One attendant pass per patient.</span></li>
+          <li><span class="mono">ICU</span><span>11:00 – 11:30 AM and 5:00 – 5:30 PM. Family update by the treating team at 5:30 PM.</span></li>
+          <li><span class="mono">Pharmacy</span><span>Open 24 hours, ground floor, Block A.</span></li>
+          <li><span class="mono">Blood bank</span><span>Open 24 hours. Donors welcome 9:00 AM – 5:00 PM.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="grid">
+      <div>
+        <h4>JAC Medical College &amp; Hospital</h4>
+        <p>Hospital Road, Sector 12<br>Bengaluru 560 000, Karnataka</p>
+      </div>
+      <div>
+        <h4>Hospital</h4>
+        <ul>
+          <li class="copyrow">Casualty <span class="mono">+91 80 4000 1000</span><button class="copy" data-copy="+91 80 4000 1000">Copy</button></li>
+          <li class="copyrow">OPD desk <span class="mono">+91 80 4000 1100</span><button class="copy" data-copy="+91 80 4000 1100">Copy</button></li>
+        </ul>
+      </div>
+      <div>
+        <h4>College</h4>
+        <ul>
+          <li class="copyrow">Admissions <span class="mono">+91 80 4000 2000</span><button class="copy" data-copy="+91 80 4000 2000">Copy</button></li>
+          <li>admissions@jac.example</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quick links</h4>
+        <ul>
+          <li><a href="#departments">Departments</a></li>
+          <li><a href="#doctors">Find a doctor</a></li>
+          <li><a href="#college">Programmes</a></li>
+          <li><a href="#notices">Notice board</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© 2026 JAC Medical College &amp; Hospital</span>
+      <span>Sample website. Names, numbers and figures are placeholders.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const DEPTS=[
+ {c:"MED",n:"General Medicine",d:"Fever, diabetes, hypertension and adult health checks.",b:"A1",days:[1,1,1,1,1,1]},
+ {c:"SUR",n:"General Surgery",d:"Hernia, gallbladder, thyroid and laparoscopic surgery.",b:"A2",days:[1,1,1,1,1,1]},
+ {c:"CAR",n:"Cardiology",d:"Chest pain clinic, echo, angiography and cath lab.",b:"B1",days:[1,0,1,0,1,1]},
+ {c:"ORT",n:"Orthopaedics",d:"Fractures, joint replacement, sports injuries and spine.",b:"A3",days:[1,1,0,1,1,1]},
+ {c:"OBG",n:"Obstetrics & Gynaecology",d:"Antenatal care, high-risk pregnancy and labour ward.",b:"C1",days:[1,1,1,1,1,1]},
+ {c:"PED",n:"Paediatrics",d:"Child health, vaccination clinic, NICU and PICU.",b:"C2",days:[1,1,1,1,1,1]},
+ {c:"NEU",n:"Neurology",d:"Stroke, epilepsy, headache and movement disorders.",b:"B2",days:[0,1,0,1,0,1]},
+ {c:"ENT",n:"ENT",d:"Hearing, sinus, voice and head-and-neck surgery.",b:"A4",days:[1,0,1,0,1,0]},
+ {c:"OPH",n:"Ophthalmology",d:"Cataract, glaucoma, retina and children's eye care.",b:"A4",days:[1,1,1,1,1,1]},
+];
+const DAYNAMES=["Mon","Tue","Wed","Thu","Fri","Sat"];
+const DOCS=[
+ {n:"Dr. Meera Iyer",q:"MD, DM (Cardiology)",s:"Cardiology",r:"Professor & Head",exp:22},
+ {n:"Dr. Arjun Rao",q:"MS (Ortho), Fellowship Arthroplasty",s:"Orthopaedics",r:"Professor",exp:18},
+ {n:"Dr. Fatima Sheikh",q:"MD (Paediatrics)",s:"Paediatrics",r:"Associate Professor",exp:12},
+ {n:"Dr. Rohan Kulkarni",q:"MD (General Medicine)",s:"General Medicine",r:"Professor & Head",exp:25},
+ {n:"Dr. Anjali Nair",q:"MS, DNB (OBG)",s:"Obstetrics & Gynaecology",r:"Associate Professor",exp:14},
+ {n:"Dr. Vikram Singh",q:"MCh (Neurosurgery)",s:"Neurology",r:"Assistant Professor",exp:9},
+ {n:"Dr. Kavya Menon",q:"MS (Ophthalmology)",s:"Ophthalmology",r:"Associate Professor",exp:11},
+ {n:"Dr. Sameer Joshi",q:"MS (General Surgery), FMAS",s:"General Surgery",r:"Professor",exp:20},
+ {n:"Dr. Priya Das",q:"MS (ENT)",s:"ENT",r:"Assistant Professor",exp:7},
+];
+
+// Date and OPD board
+const now=new Date();
+document.getElementById("today").textContent=now.toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"});
+const dow=now.getDay(); // 0 Sun
+const mins=now.getHours()*60+now.getMinutes();
+function opdStatus(dep){
+  if(dow===0) return ["closed","Sunday · closed"];
+  if(!dep.days[dow-1]) return ["closed","No OPD today"];
+  if(mins<8*60) return ["busy","Opens 8:00"];
+  if(mins<13*60) return ["open","Registering"];
+  if(mins<16*60) return ["busy","Consults only"];
+  return ["closed","Closed for today"];
+}
+document.getElementById("opdBody").innerHTML=DEPTS.slice(0,6).map(d=>{
+  const [k,t]=opdStatus(d);
+  return `<tr><td>${d.n}</td><td class="mono">${d.b}</td><td class="mono">08:00–16:00</td><td><span class="status s-${k}">${t}</span></td></tr>`;
+}).join("");
+
+// Departments grid
+document.getElementById("deptGrid").innerHTML=DEPTS.map(d=>`
+  <article class="dept"><span class="code">${d.c} · BLOCK ${d.b}</span><h3>${d.n}</h3><p>${d.d}</p>
+  <div class="days" aria-label="OPD days">${d.days.map((on,i)=>`<i class="${on?"":"off"}">${DAYNAMES[i]}</i>`).join("")}</div></article>`).join("");
+
+// Doctors with filters
+const specs=["All",...new Set(DOCS.map(d=>d.s))];
+const filters=document.getElementById("filters");
+let activeSpec="All",query="";
+specs.forEach(s=>{
+  const b=document.createElement("button");
+  b.type="button";b.className="chip";b.textContent=s;b.setAttribute("aria-pressed",s==="All");
+  b.onclick=()=>{activeSpec=s;filters.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c.textContent===s));renderDocs();};
+  filters.appendChild(b);
+});
+document.getElementById("docSearch").addEventListener("input",e=>{query=e.target.value.trim().toLowerCase();renderDocs();});
+function initials(n){return n.replace("Dr. ","").split(" ").map(w=>w[0]).join("").slice(0,2);}
+function renderDocs(){
+  const list=DOCS.filter(d=>(activeSpec==="All"||d.s===activeSpec)&&(!query||(d.n+" "+d.s).toLowerCase().includes(query)));
+  const g=document.getElementById("docGrid");
+  g.innerHTML=list.length?list.map(d=>`
+    <div class="doc"><div class="avatar" aria-hidden="true">${initials(d.n)}</div><div>
+    <b>${d.n}</b><span class="q">${d.q}</span>
+    <div class="meta"><span>${d.r}</span><span class="mono">${d.exp} yrs</span></div>
+    <button type="button" data-dept="${d.s}">Book with this department →</button></div></div>`).join("")
+    :`<div class="empty">No doctors match “${query}”. Try a speciality such as cardiology.</div>`;
+  g.querySelectorAll("button[data-dept]").forEach(b=>b.onclick=()=>{document.getElementById("pDept").value=b.dataset.dept;document.getElementById("appointment").scrollIntoView();document.getElementById("pName").focus({preventScroll:true});});
+}
+renderDocs();
+
+// Appointment form
+const sel=document.getElementById("pDept");
+sel.innerHTML=`<option value="">Choose a department</option>`+DEPTS.map(d=>`<option>${d.n}</option>`).join("");
+const dateIn=document.getElementById("pDate");
+const iso=d=>d.toISOString().slice(0,10);
+const tmr=new Date(now);tmr.setDate(tmr.getDate()+1);
+dateIn.min=iso(tmr);
+document.getElementById("apptForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const name=document.getElementById("pName").value.trim();
+  const phone=document.getElementById("pPhone").value.replace(/\D/g,"");
+  const dept=sel.value,date=dateIn.value;
+  const errs={eName:name?"":"Enter the patient's name.",ePhone:/^[6-9]\d{9}$/.test(phone)?"":"Enter a 10-digit Indian mobile number.",eDept:dept?"":"Choose a department.",eDate:""};
+  if(!date) errs.eDate="Pick a date.";
+  else{
+    const d=new Date(date+"T00:00");
+    if(date<dateIn.min) errs.eDate="Pick a date from tomorrow onwards.";
+    else if(d.getDay()===0) errs.eDate="OPD is closed on Sundays.";
+    else{const dep=DEPTS.find(x=>x.n===dept);if(dep&&!dep.days[d.getDay()-1]) errs.eDate=`${dept} OPD does not run on ${DAYNAMES[d.getDay()-1]}days.`;}
+  }
+  Object.entries(errs).forEach(([id,m])=>document.getElementById(id).textContent=m);
+  if(Object.values(errs).some(Boolean)) return;
+  const ref="JAC-"+date.replace(/-/g,"").slice(2)+"-"+String(Math.floor(Math.random()*900)+100);
+  const done=document.getElementById("apptDone");
+  done.innerHTML=`<b>Request ready for ${name}</b><br>${dept} · ${new Date(date+"T00:00").toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}<br>Reference <span class="mono">${ref}</span><br><small class="muted">This sample page doesn't send requests yet. Connect it to your booking system before going live.</small>`;
+  done.hidden=false;
+});
+
+// Mobile menu
+const mb=document.getElementById("menuBtn"),nav=document.getElementById("mainNav");
+mb.onclick=()=>{const o=nav.classList.toggle("open");mb.setAttribute("aria-expanded",o);};
+nav.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>{nav.classList.remove("open");mb.setAttribute("aria-expanded",false);}));
+
+// Copy buttons
+document.querySelectorAll(".copy").forEach(b=>b.addEventListener("click",()=>{
+  navigator.clipboard.writeText(b.dataset.copy).then(()=>{b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1500);})
+  .catch(()=>{const r=document.createRange();r.selectNodeContents(b.previousElementSibling);const s=getSelection();s.removeAllRanges();s.addRange(r);});
+}));
+</script>
+</body>
+</html>
