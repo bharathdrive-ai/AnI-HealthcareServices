@@ -2,19 +2,19 @@
    Data lives in localStorage (per browser) and is seeded from data.js. */
 (function(){
 const PAGES=[
-  {no:"01",file:"dashboard.html",title:"Dashboard",group:"Overview"},
-  {no:"02",file:"administration.html",title:"Administration",group:"Overview"},
-  {no:"03",file:"hospital-master.html",title:"Hospital Master",group:"Setup"},
-  {no:"04",file:"appointments.html",title:"Appointment Booking",group:"Patient care"},
-  {no:"05",file:"patients.html",title:"Patient Management",group:"Patient care"},
-  {no:"06",file:"services.html",title:"Medical Services",group:"Patient care"},
-  {no:"07",file:"staff.html",title:"Staff Management",group:"People"},
-  {no:"08",file:"roster.html",title:"Duty Roster & Leave",group:"People"},
-  {no:"09",file:"holidays.html",title:"Holiday Management",group:"People"},
-  {no:"10",file:"inventory.html",title:"Medicine & Inventory",group:"Pharmacy & stock"},
-  {no:"11",file:"pharmacy.html",title:"Pharmacy",group:"Pharmacy & stock"},
-  {no:"12",file:"reports.html",title:"Reports & Analytics",group:"Insights"},
-  {no:"13",file:"notifications.html",title:"Notifications",group:"Insights"},
+  {no:"01",file:"dashboard.html",mod:"Dashboard",title:"Dashboard",group:"Overview"},
+  {no:"02",file:"administration.html",mod:"Administration",title:"Administration",group:"Overview"},
+  {no:"03",file:"hospital-master.html",mod:"Hospital Master",title:"Hospital Master",group:"Setup"},
+  {no:"04",file:"appointments.html",mod:"Appointments",title:"Appointment Booking",group:"Patient care"},
+  {no:"05",file:"patients.html",mod:"Patients",title:"Patient Management",group:"Patient care"},
+  {no:"06",file:"services.html",mod:"Medical Services",title:"Medical Services",group:"Patient care"},
+  {no:"07",file:"staff.html",mod:"Staff",title:"Staff Management",group:"People"},
+  {no:"08",file:"roster.html",mod:"Roster & Leave",title:"Duty Roster & Leave",group:"People"},
+  {no:"09",file:"holidays.html",mod:"Holidays",title:"Holiday Management",group:"People"},
+  {no:"10",file:"inventory.html",mod:"Inventory",title:"Medicine & Inventory",group:"Pharmacy & stock"},
+  {no:"11",file:"pharmacy.html",mod:"Pharmacy",title:"Pharmacy",group:"Pharmacy & stock"},
+  {no:"12",file:"reports.html",mod:"Reports",title:"Reports & Analytics",group:"Insights"},
+  {no:"13",file:"notifications.html",mod:"Notifications",title:"Notifications",group:"Insights"},
 ];
 
 /* ---------- Store ---------- */
@@ -35,6 +35,79 @@ const db={
   },
   find(key,id){return db.get(key).find(r=>r.id===id);},
 };
+
+/* ---------- Sign-in ----------
+   Runs entirely in the browser, so it controls what the portal shows but is NOT security:
+   anyone can read these files. Real protection needs a server-side identity provider. */
+const SESSION_KEY="jac.session",FAIL_KEY="jac.fail.";
+const IDLE_MS=20*60*1000, REMEMBER_MS=7*24*60*60*1000, MAX_FAILS=5, LOCK_MS=5*60*1000;
+const store=remember=>remember?localStorage:sessionStorage;
+const isoLocalD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const nowStamp=()=>{const d=new Date();return `${isoLocalD(d)} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
+function audit(user,action){const a=db.get("audit");a.unshift({id:"AUD"+Date.now(),time:nowStamp(),user,action});db.set("audit",a.slice(0,300));}
+const auth={
+  async hash(username,password){
+    if(!(window.crypto&&crypto.subtle)) throw new Error("Sign-in needs a secure page (https or localhost).");
+    const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(`jac:${username}:${password}`));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  },
+  read(){for(const r of [false,true]){try{const s=JSON.parse(store(r).getItem(SESSION_KEY));if(s)return s;}catch(e){}}return null;},
+  write(s){try{store(s.remember).setItem(SESSION_KEY,JSON.stringify(s));}catch(e){}},
+  clear(){[false,true].forEach(r=>{try{store(r).removeItem(SESSION_KEY);}catch(e){}});},
+  session(){
+    const s=auth.read();if(!s)return null;
+    if(Date.now()-s.last>(s.remember?REMEMBER_MS:IDLE_MS)){auth.clear();return null;}
+    const u=db.find("users",s.uid);
+    if(!u||u.status!=="Active"){auth.clear();return null;}
+    return {...s,user:u};
+  },
+  user(){return auth.session()?.user||null;},
+  touch(){const s=auth.read();if(s){s.last=Date.now();auth.write(s);}},
+  can(mod,action="view"){
+    const u=auth.user();if(!u)return false;
+    const p=db.find("permissions",u.role);
+    return !!(p&&p.perms&&p.perms[mod]&&p.perms[mod][action]);
+  },
+  lockInfo(username){try{return JSON.parse(localStorage.getItem(FAIL_KEY+username))||{n:0,until:0};}catch(e){return {n:0,until:0};}},
+  async signIn(username,password,remember){
+    username=String(username||"").trim().toLowerCase();
+    if(!username||!password) return {ok:false,msg:"Enter your username and password."};
+    const lock=auth.lockInfo(username);
+    if(lock.until>Date.now()) return {ok:false,msg:`Too many attempts. Try again in ${Math.ceil((lock.until-Date.now())/60000)} min.`};
+    const u=db.get("users").find(x=>x.username===username);
+    const stored=u&&(u.pw!==undefined?u.pw:((window.SEED||{}).users||[]).find(x=>x.id===u.id)?.pw); // older saved data has no pw field
+    const ok=!!stored&&stored===await auth.hash(username,password);
+    if(!ok){
+      const n=lock.n+1,next={n:n>=MAX_FAILS?0:n,until:n>=MAX_FAILS?Date.now()+LOCK_MS:0};
+      try{localStorage.setItem(FAIL_KEY+username,JSON.stringify(next));}catch(e){}
+      if(u) audit(username,"Failed sign-in");
+      return {ok:false,msg:n>=MAX_FAILS?"Too many attempts. Account locked for 5 minutes.":`Username or password is incorrect. ${MAX_FAILS-n} attempt${MAX_FAILS-n===1?"":"s"} left.`};
+    }
+    if(u.status!=="Active") return {ok:false,msg:"This account is inactive. Ask an administrator to enable it."};
+    try{localStorage.removeItem(FAIL_KEY+username);}catch(e){}
+    auth.clear();auth.write({uid:u.id,remember:!!remember,at:Date.now(),last:Date.now()});
+    const L=db.get("users");const rec=L.find(x=>x.id===u.id);rec.lastLogin=nowStamp();db.set("users",L);
+    audit(username,"Signed in");
+    return {ok:true,user:u};
+  },
+  signOut(reason){
+    const u=auth.user();if(u)audit(u.username,reason==="expired"?"Session expired":"Signed out");
+    auth.clear();location.replace("login.html"+(reason?`?${reason}=1`:""));
+  },
+  firstAllowed(){return PAGES.find(p=>auth.can(p.mod))||null;},
+};
+
+/* Gate every portal page except the login page. */
+const FILE=location.pathname.split("/").pop()||"index.html";
+const PAGE=PAGES.find(p=>p.file===FILE)||null;
+let BLOCKED=false;
+if(PAGE&&!auth.session()){
+  BLOCKED=true;
+  document.documentElement.style.visibility="hidden";
+  location.replace("login.html?next="+encodeURIComponent(FILE));
+}
+const MOD=PAGE?.mod||"";
+const canDo=action=>!PAGE||auth.can(MOD,action);
 
 /* ---------- Helpers ---------- */
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -120,6 +193,8 @@ function readForm(d,fields){
 /* ---------- CRUD table ---------- */
 function crud(el,cfg){
   const st={q:"",sort:null,dir:1,filters:{}};
+  const P={add:!cfg.readOnly&&canDo("add"),edit:!cfg.readOnly&&canDo("edit"),del:!cfg.readOnly&&canDo("del")};
+  const hasAct=P.edit||P.del||!!cfg.rowActions;
   const root=typeof el==="string"?document.querySelector(el):el;
   const filtersHTML=(cfg.filters||[]).map(f=>{
     const o=typeof f.options==="function"?f.options():f.options;
@@ -128,11 +203,11 @@ function crud(el,cfg){
   root.innerHTML=`<div class="panel">
     ${cfg.title?`<div class="panel-head"><h2>${esc(cfg.title)}</h2><span class="spacer"></span>${cfg.headExtra||""}</div>`:""}
     <div class="toolbar"><input type="search" placeholder="${esc(cfg.searchPlaceholder||"Search")}" aria-label="Search">${filtersHTML}
-      ${cfg.readOnly?"":`<button class="btn primary" data-add>+ ${esc(cfg.addLabel||"Add")}</button>`}</div>
+      ${!P.add?"":`<button class="btn primary" data-add>+ ${esc(cfg.addLabel||"Add")}</button>`}</div>
     <div class="table-wrap"><table class="dt"><thead></thead><tbody></tbody></table></div>
     <div class="foot"><span data-count></span><span>${esc(cfg.footNote||"")}</span></div></div>`;
   const thead=root.querySelector("thead"),tbody=root.querySelector("tbody");
-  thead.innerHTML="<tr>"+cfg.columns.map((c,i)=>`<th data-i="${i}" ${c.num?'style="text-align:right"':""}>${esc(c.label)}</th>`).join("")+(cfg.readOnly&&!cfg.rowActions?"":'<th class="noclick"></th>')+"</tr>";
+  thead.innerHTML="<tr>"+cfg.columns.map((c,i)=>`<th data-i="${i}" ${c.num?'style="text-align:right"':""}>${esc(c.label)}</th>`).join("")+(hasAct?'<th class="noclick"></th>':"")+"</tr>";
   root.querySelector("input[type=search]").oninput=e=>{st.q=e.target.value.toLowerCase();render();};
   root.querySelectorAll("[data-f]").forEach(s=>s.onchange=()=>{st.filters[s.dataset.f]=s.value;render();});
   thead.querySelectorAll("th[data-i]").forEach(th=>th.onclick=()=>{const c=cfg.columns[th.dataset.i];st.dir=st.sort===c.k?-st.dir:1;st.sort=c.k;render();});
@@ -149,7 +224,7 @@ function crud(el,cfg){
   function render(){
     const r=rows();
     tbody.innerHTML=r.length?r.map(x=>`<tr>${cfg.columns.map(c=>`<td class="${c.num?"num":""}">${c.fmt?c.fmt(x[c.k],x):esc(x[c.k])}</td>`).join("")}
-      ${cfg.readOnly&&!cfg.rowActions?"":`<td class="act">${cfg.rowActions?cfg.rowActions(x):""}${cfg.readOnly?"":`<button class="btn sm link" data-e="${esc(x.id)}">Edit</button><button class="btn sm link danger" data-d="${esc(x.id)}">Delete</button>`}</td>`}</tr>`).join("")
+      ${!hasAct?"":`<td class="act">${cfg.rowActions?cfg.rowActions(x):""}${P.edit?`<button class="btn sm link" data-e="${esc(x.id)}">Edit</button>`:""}${P.del?`<button class="btn sm link danger" data-d="${esc(x.id)}">Delete</button>`:""}</td>`}</tr>`).join("")
       :`<tr><td colspan="${cfg.columns.length+1}" class="empty">${esc(cfg.empty||"No records match.")}</td></tr>`;
     root.querySelector("[data-count]").textContent=`${r.length} of ${db.get(cfg.key).length} records`;
     tbody.querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>edit(b.dataset.e));
@@ -163,12 +238,13 @@ function crud(el,cfg){
       if(cfg.validate){const m=cfg.validate(v,rec);if(m){toast(m);return false;}}
       const list=db.get(cfg.key);
       if(id){Object.assign(rec,v);}else{v.id=uid(cfg.idPrefix||"R",cfg.key);if(cfg.defaults)Object.assign(v,cfg.defaults(v));list.unshift(v);}
-      db.set(cfg.key,list);render();toast(id?"Saved":`${cfg.noun||"Record"} ${v.id||""} created`);cfg.onChange&&cfg.onChange();
+      db.set(cfg.key,list);audit(auth.user()?.username||"—",`${id?"Updated":"Created"} ${cfg.noun||"record"} ${id||v.id}`);render();toast(id?"Saved":`${cfg.noun||"Record"} ${v.id||""} created`);cfg.onChange&&cfg.onChange();
     }}]});
   }
   async function del(id){
+    if(cfg.beforeDelete){const m=cfg.beforeDelete(id);if(m){toast(m);return;}}
     if(!await confirmBox(`Delete ${cfg.noun||"record"}?`,`This removes ${id} from this browser's data.`))return;
-    db.set(cfg.key,db.get(cfg.key).filter(r=>r.id!==id));render();toast("Deleted");cfg.onChange&&cfg.onChange();
+    db.set(cfg.key,db.get(cfg.key).filter(r=>r.id!==id));audit(auth.user()?.username||"—",`Deleted ${cfg.noun||"record"} ${id}`);render();toast("Deleted");cfg.onChange&&cfg.onChange();
   }
   const api={render,edit};render();return api;
 }
@@ -219,37 +295,74 @@ const lookup={
 };
 
 /* ---------- Shell ---------- */
+const initials=n=>String(n||"").replace(/^(Dr|Sr)\.\s*/,"").split(/\s+/).map(w=>w[0]||"").join("").slice(0,2).toUpperCase();
 function shell(){
-  const file=location.pathname.split("/").pop()||"dashboard.html";
-  const page=PAGES.find(p=>p.file===file)||PAGES[0];
+  if(BLOCKED||!PAGE) return;
+  const page=PAGE,user=auth.user();
+  const role=db.find("roles",user.role);
   document.title=`${page.title} · JAC Hospital Portal`;
   const content=document.getElementById("content");
-  const groups=[...new Set(PAGES.map(p=>p.group))];
+  const visible=PAGES.filter(p=>auth.can(p.mod));
+  const groups=[...new Set(visible.map(p=>p.group))];
+  const isAdmin=user.role==="ROL0001";
   const app=document.createElement("div");app.className="app";
   app.innerHTML=`<aside class="side" id="side">
-      <a class="brand" href="dashboard.html"><svg width="34" height="34" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="19.5" fill="none" stroke="#d6a35c" stroke-width="1.5"/><path d="M17 9h8v8h8v8h-8v8h-8v-8H9v-8h8z" fill="#5cc0aa"/></svg>
+      <a class="brand" href="${esc((auth.firstAllowed()||PAGES[0]).file)}"><svg width="34" height="34" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="19.5" fill="none" stroke="#d6a35c" stroke-width="1.5"/><path d="M17 9h8v8h8v8h-8v8h-8v-8H9v-8h8z" fill="#5cc0aa"/></svg>
         <span><b>JAC Portal</b><small>HOSPITAL &amp; COLLEGE</small></span></a>
-      <nav aria-label="Portal">${groups.map(g=>`<div class="group">${esc(g)}</div>`+PAGES.filter(p=>p.group===g).map(p=>`<a href="${p.file}" ${p===page?'aria-current="page"':""}><span class="no">${p.no}</span>${esc(p.title)}</a>`).join("")).join("")}
-        <div class="group">Data</div><a href="#" id="resetData"><span class="no">↺</span>Reset sample data</a>
-        <a href="../index.html"><span class="no">↗</span>Public website</a></nav>
+      <nav aria-label="Portal">${groups.map(g=>`<div class="group">${esc(g)}</div>`+visible.filter(p=>p.group===g).map(p=>`<a href="${p.file}" ${p===page?'aria-current="page"':""}><span class="no">${p.no}</span>${esc(p.title)}</a>`).join("")).join("")}
+        <div class="group">Account</div>
+        ${isAdmin?`<a href="#" id="resetData"><span class="no">↺</span>Reset sample data</a>`:""}
+        <a href="../index.html"><span class="no">↗</span>Public website</a>
+        <a href="#" id="signOutSide"><span class="no">⏻</span>Sign out</a></nav>
     </aside>
     <div class="main"><header class="top">
       <button class="btn sm menu-btn" id="menuBtn" aria-controls="side" aria-expanded="false">☰</button>
-      <div><div class="crumb">${page.no} · ${esc(page.group)}</div><h1>${esc(page.title)}</h1></div>
+      <div style="min-width:0"><div class="crumb">${page.no} · ${esc(page.group)}${auth.can(page.mod)&&!canDo("add")&&!canDo("edit")?' · <span class="pill">View only</span>':""}</div><h1>${esc(page.title)}</h1></div>
       <span class="spacer"></span>
-      <span class="who"><span class="muted mono" id="clock"></span><span class="av">RA</span><span>Records Admin</span></span>
+      <span class="muted mono clock" id="clock"></span>
+      <div class="who-menu">
+        <button class="who" id="whoBtn" aria-haspopup="true" aria-expanded="false"><span class="av">${esc(initials(user.name))}</span><span class="who-text"><b>${esc(user.name)}</b><small>${esc(role?.name||"")}</small></span></button>
+        <div class="who-pop" id="whoPop" hidden>
+          <div class="muted" style="font-size:.75rem;padding:.4rem .6rem">Signed in as <b class="mono">${esc(user.username)}</b></div>
+          <button type="button" id="signOutTop">Sign out</button>
+        </div>
+      </div>
     </header></div>`;
   app.querySelector(".main").appendChild(content);
   content.classList.add("content");
   document.body.prepend(app);
+
+  if(!auth.can(page.mod)){
+    const first=auth.firstAllowed();
+    content.innerHTML=`<div class="panel"><div class="panel-body" style="padding:2.5rem 1.5rem;text-align:center">
+      <h2 style="font-size:1.1rem">You don't have access to ${esc(page.title)}</h2>
+      <p class="muted" style="margin:.6rem auto 1.2rem;max-width:46ch">Your role, ${esc(role?.name||"")}, can't view this page. Ask an administrator to change your permissions in Administration.</p>
+      ${first?`<a class="btn primary" href="${first.file}">Go to ${esc(first.title)}</a>`:""}</div></div>`;
+  }else if(!canDo("add")&&!canDo("edit")){
+    document.body.classList.add("view-only");
+  }
+
   const side=app.querySelector("#side"),mb=app.querySelector("#menuBtn");
   mb.onclick=()=>{const o=side.classList.toggle("open");mb.setAttribute("aria-expanded",o);};
-  app.querySelector("#resetData").onclick=async e=>{e.preventDefault();if(await confirmBox("Reset sample data?","All changes made in this browser will be replaced with the original sample data.","Reset")){db.reset();location.reload();}};
+  const whoBtn=app.querySelector("#whoBtn"),pop=app.querySelector("#whoPop");
+  whoBtn.onclick=e=>{e.stopPropagation();pop.hidden=!pop.hidden;whoBtn.setAttribute("aria-expanded",!pop.hidden);};
+  document.addEventListener("click",e=>{if(!pop.hidden&&!pop.contains(e.target)){pop.hidden=true;whoBtn.setAttribute("aria-expanded","false");}});
+  app.querySelector("#signOutTop").onclick=()=>auth.signOut("signedout");
+  app.querySelector("#signOutSide").onclick=e=>{e.preventDefault();auth.signOut("signedout");};
+  const rd=app.querySelector("#resetData");
+  if(rd) rd.onclick=async e=>{e.preventDefault();if(await confirmBox("Reset sample data?","All changes made in this browser, including users and passwords, will be replaced with the original sample data.","Reset")){db.reset();location.reload();}};
   const clock=app.querySelector("#clock");
   const tick=()=>clock.textContent=new Date().toLocaleString("en-IN",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
   tick();setInterval(tick,30000);
+
+  /* Keep the session alive while the user is active; sign out after 20 idle minutes. */
+  let lastTouch=0;
+  const activity=()=>{const n=Date.now();if(n-lastTouch>30000){lastTouch=n;auth.touch();}};
+  ["click","keydown","scroll","pointermove"].forEach(ev=>document.addEventListener(ev,activity,{passive:true}));
+  setInterval(()=>{if(!auth.session())auth.signOut("expired");},60000);
+  window.addEventListener("storage",e=>{if(e.key===SESSION_KEY&&!auth.session())location.replace("login.html");});
 }
 
-window.Portal={PAGES,db,esc,isoLocal,today,addDays,fmtDate,inr,num,daysBetween,uid,pill,toast,opts,modal,confirmBox,formHTML,readForm,crud,kpis,barChart,hbars,tabs,lookup,shell};
+window.Portal={PAGES,db,esc,isoLocal,today,addDays,fmtDate,inr,num,daysBetween,uid,pill,toast,opts,modal,confirmBox,formHTML,readForm,crud,kpis,barChart,hbars,tabs,lookup,shell,auth,audit,can:canDo};
 document.addEventListener("DOMContentLoaded",shell);
 })();

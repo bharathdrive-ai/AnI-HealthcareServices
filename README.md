@@ -27,4 +27,15 @@ All names, phone numbers, doctors and figures are placeholders.
 | 13 | notifications.html | SMS / email / app templates, alert rules, delivery log |
 
 Shared code: `portal/assets/portal.css`, `portal.js` (shell, store, table component) and `data.js` (sample data).
+### Sign-in
+
+`portal/login.html` is the portal's entry page. Every portal page sends signed-out visitors there.
+
+- Accounts are the users in Administration → Users. What each person sees, and whether they can add, edit or delete, follows their role's permissions in Administration → Roles & permissions.
+- Sample accounts (one per role) are listed on the login page. They share the demo password noted in `portal/assets/data.js`.
+- Sessions end after 20 idle minutes, or last 7 days with "Keep me signed in". Five wrong passwords lock an account for 5 minutes.
+- The Super Admin sets passwords from Administration → Users → Set password. Sign-ins, failed attempts and record changes appear in the Audit log.
+
+**This is not real security.** The site is static, so the sign-in check runs in the visitor's browser and anyone can read or bypass it. Before real patient data goes in, move sign-in and data to a server-side service (for example Supabase, Firebase or an in-house API) that checks every request.
+
 Data is saved in the browser's localStorage only; use "Reset sample data" in the sidebar to start over. There is no server, login or real messaging yet.

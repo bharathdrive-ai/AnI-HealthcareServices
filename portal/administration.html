@@ -18,7 +18,7 @@
   </div>
 </div>
 <script>
-const {db,esc,pill,crud,kpis,tabs,toast,opts}=Portal;
+const {db,esc,pill,crud,kpis,tabs,toast,opts,modal,auth,audit}=Portal;
 const roleName=id=>db.find("roles",id)?.name||id;
 function refreshKpis(){
   const u=db.get("users");
@@ -36,13 +36,41 @@ function users(){
   crud(pane,{key:"users",idPrefix:"USR",noun:"user",addLabel:"Add user",searchPlaceholder:"Search users",onChange:refreshKpis,
     filters:[{k:"role",label:"Roles",options:()=>db.get("roles").map(r=>({value:r.id,label:r.name}))},{k:"status",label:"Statuses",options:["Active","Inactive"]}],
     columns:[{k:"id",label:"ID",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"name",label:"Name",fmt:(v,r)=>`<b>${esc(v)}</b><div class="muted mono" style="font-size:.75rem">${esc(r.username)}</div>`},
-      {k:"role",label:"Role",fmt:v=>esc(roleName(v)),text:r=>roleName(r.role)},{k:"email",label:"Email"},{k:"lastLogin",label:"Last sign-in",fmt:v=>v?`<span class="mono">${esc(v)}</span>`:'<span class="muted">Never</span>'},{k:"status",label:"Status",fmt:pill}],
+      {k:"role",label:"Role",fmt:v=>esc(roleName(v)),text:r=>roleName(r.role)},{k:"email",label:"Email"},{k:"pw",label:"Password",fmt:(v,r)=>(v!==undefined?v:(window.SEED.users.find(x=>x.id===r.id)||{}).pw)?`<span class="pill ok">Set</span>`:`<span class="pill warn">Not set</span>`,text:()=>""},{k:"lastLogin",label:"Last sign-in",fmt:v=>v?`<span class="mono">${esc(v)}</span>`:'<span class="muted">Never</span>'},{k:"status",label:"Status",fmt:pill}],
     fields:[{k:"name",label:"Full name",required:true},{k:"username",label:"Username",required:true,pattern:"^[a-z0-9._]{3,}$",patternMsg:"Lowercase letters, digits, dot or underscore; 3+ characters."},
       {k:"email",label:"Email",type:"email",required:true,pattern:"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",patternMsg:"Enter a valid email."},{k:"role",label:"Role",type:"select",required:true,options:()=>db.get("roles").map(r=>({value:r.id,label:r.name}))},
       {k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}],
-    validate:(v,rec)=>db.get("users").some(u=>u.username===v.username&&u.id!==rec.id)?"That username is already taken.":"",
-    defaults:()=>({lastLogin:""}),
+    validate:(v,rec)=>{
+      if(db.get("users").some(u=>u.username===v.username&&u.id!==rec.id)) return "That username is already taken.";
+      const me=auth.user();
+      if(rec.id&&rec.id===me.id&&(v.status!=="Active"||v.role!==me.role)) return "You can't deactivate your own account or change your own role.";
+      if(rec.id&&v.username!==rec.username) v.pw=""; // password hash is tied to the username
+      return "";
+    },
+    beforeDelete:id=>id===auth.user().id?"You can't delete the account you're signed in with.":"",
+    defaults:()=>({lastLogin:"",pw:""}),
+    rowActions:r=>`<button class="btn sm link" data-pw="${esc(r.id)}">Set password</button>`,
+    afterRender:tb=>tb.querySelectorAll("[data-pw]").forEach(b=>b.onclick=()=>setPassword(b.dataset.pw)),
   });
+}
+
+function setPassword(id){
+  const u=db.find("users",id);
+  const d=modal({title:`Set password · ${u.name}`,body:`
+    <p class="muted" style="margin:0 0 .9rem">Signed in as <b class="mono">${esc(u.username)}</b>. At least 10 characters with a letter and a number.</p>
+    <div class="form-grid"><div class="field"><label for="np1">New password</label><input id="np1" type="password" autocomplete="new-password"></div>
+    <div class="field"><label for="np2">Confirm password</label><input id="np2" type="password" autocomplete="new-password"></div></div>
+    <p class="err" id="npErr"></p>`,
+    buttons:[{label:"Set password",cls:"primary",onClick:dlg=>{
+      const a=dlg.querySelector("#np1").value,b=dlg.querySelector("#np2").value,err=dlg.querySelector("#npErr");
+      if(a.length<10||!/[A-Za-z]/.test(a)||!/\d/.test(a)){err.textContent="Use at least 10 characters, including a letter and a number.";return false;}
+      if(a!==b){err.textContent="The two passwords don't match.";return false;}
+      auth.hash(u.username,a).then(h=>{
+        const L=db.get("users");L.find(x=>x.id===id).pw=h;db.set("users",L);
+        audit(auth.user().username,`Set password for ${u.username}`);users();toast(`Password set for ${u.username}`);
+      }).catch(e=>toast(e.message));
+    }}]});
+  d.querySelector("#np1").focus();
 }
 
 function roles(){
@@ -72,12 +100,12 @@ function settings(){
     fields:[{k:"group",label:"Group",required:true},{k:"key",label:"Setting",required:true},{k:"value",label:"Value",required:true,full:true}]});
 }
 
-function audit(){
+function auditLog(){
   crud(pane,{key:"audit",readOnly:true,searchPlaceholder:"Search audit log",
     columns:[{k:"time",label:"Time",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"user",label:"User",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"action",label:"Action"}]});
 }
 
-tabs("#tabs",["Users","Roles & permissions","System configuration","Audit log"],i=>[users,roles,settings,audit][i]());
+tabs("#tabs",["Users","Roles & permissions","System configuration","Audit log"],i=>[users,roles,settings,auditLog][i]());
 </script>
 </body>
 </html>

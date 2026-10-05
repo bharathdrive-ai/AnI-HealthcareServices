@@ -227,6 +227,18 @@ const permMap={
   ROL0006:m=>["Staff","Roster & Leave","Holidays"].includes(m)?P(1,1,1,1):(m==="Dashboard"||m==="Reports"?P(1,0,0,0):P(0,0,0,0)),
 };
 const permissions=roles.map(r=>({id:r.id,perms:Object.fromEntries(MODULES.map(m=>[m,permMap[r.id](m)]))}));
+/* Demo sign-in: every sample account uses the password JacDemo@2026.
+   Stored as SHA-256("jac:<username>:<password>"). */
+const PW={
+  "admin":"5738248bb95630b29959a5f1a0cecb71bd23ab5174f5bb0d31e8e1b9f1f25689",
+  "neha.jain":"6e4d5fc322fef355fb659c7d128265507cea16db7ef4efff960bdba7afb60b79",
+  "meera.iyer":"1b4beae70ae063c79793d9be6d85745c21620ebb9dc7baa1c90421c326863007",
+  "rohan.kulkarni":"4954f113439908937ddb12fd39846c775284896b3df09df04876eb5f903b541e",
+  "lakshmi.pillai":"e35f044ff8225597a9fd6e90af5007ec460fa1c86355c9e70f5606790da81488",
+  "ravi.kumar":"93c966562fb088ffc61ac3dda44655b9931fc5418ea42642c3a387826c51f0d3",
+  "hr.desk":"e9f24b995827b9125a9e3e24c8e76b2ca65941152bd7e6d1e667ea06069fafb9",
+  "frontdesk2":"7575a964c6b7d35d577280d7a4cbed92e0c61ba840100a1ba01203f6995fb997"
+};
 const users=[
   ["USR0001","admin","Records Admin","ROL0001","admin@jac.example"],
   ["USR0002","neha.jain","Neha Jain","ROL0002","neha.jain@jac.example"],
@@ -236,7 +248,7 @@ const users=[
   ["USR0006","ravi.kumar","Ravi Kumar","ROL0005","ravi.kumar@jac.example"],
   ["USR0007","hr.desk","HR Desk","ROL0006","hr@jac.example"],
   ["USR0008","frontdesk2","Front Desk 2","ROL0002","frontdesk2@jac.example"],
-].map(([id,username,name,role,email],i)=>({id,username,name,role,email,lastLogin:i===7?"":`${D(-(i%4))} 0${8+i%2}:${String(10+i*6).slice(-2)}`,status:i===7?"Inactive":"Active"}));
+].map(([id,username,name,role,email],i)=>({id,username,name,role,email,pw:PW[username]||"",lastLogin:i===7?"":`${D(-(i%4))} 0${8+i%2}:${String(10+i*6).slice(-2)}`,status:i===7?"Inactive":"Active"}));
 const settings=[
   {id:"SET0001",key:"OPD registration window",value:"08:00 – 13:00",group:"OPD"},
   {id:"SET0002",key:"Appointment slot length",value:"15 minutes",group:"OPD"},
