@@ -68,10 +68,10 @@ header.site .wrap{display:flex;align-items:center;justify-content:space-between;
 .brand b{font-family:var(--f-display);font-weight:400;font-size:1.15rem;display:block;line-height:1.1}
 .brand small{font-size:.72rem;color:var(--muted);letter-spacing:.04em}
 nav.main{display:flex;gap:1.4rem;align-items:center}
-nav.main a{color:var(--ink);text-decoration:none;font-weight:500;font-size:.95rem}
+nav.main a{color:var(--ink);text-decoration:none;font-weight:500;font-size:.95rem;white-space:nowrap}
 nav.main a:hover{color:var(--scrub)}
 .menu-btn{display:none;background:none;border:1px solid var(--line);border-radius:var(--r);padding:.4rem .7rem;color:var(--ink);font:inherit}
-@media (max-width:900px){
+@media (max-width:1060px){
   nav.main{display:none;position:absolute;left:0;right:0;top:100%;flex-direction:column;align-items:stretch;gap:0;background:var(--surface);border-bottom:1px solid var(--line);padding:.5rem 20px}
   nav.main.open{display:flex}
   nav.main a{padding:.7rem 0;border-bottom:1px solid var(--line)}
@@ -214,6 +214,14 @@ footer a{color:inherit}
 .legal{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid color-mix(in srgb,var(--bg) 20%,transparent);font-size:.8rem;opacity:.65;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 @media (max-width:800px){footer .grid{grid-template-columns:1fr 1fr}}
 @media (max-width:480px){footer .grid{grid-template-columns:1fr}}
+/* Narrow phones: let stat cells shrink instead of widening the page */
+.board-foot div,.figures div{min-width:0}
+@media (max-width:520px){
+  .board-foot div{padding:.8rem .7rem}
+  .board-foot .n{font-size:1.1rem}
+  .figures div{padding:1.2rem .8rem}
+  .figures .n{font-size:1.8rem}
+}
 </style>
 
 </head>
@@ -239,7 +247,7 @@ footer a{color:inherit}
     <nav class="main" id="mainNav">
       <a href="#departments">Departments</a>
       <a href="#doctors">Doctors</a>
-      <a href="#college">College</a>
+      <a href="#college">Medical Programs</a>
       <a href="#admissions">Admissions</a>
       <a href="#notices">Notices</a>
       <a class="btn btn-solid" href="#appointment">Book appointment</a>
