@@ -241,3 +241,8 @@ button.who:hover{border-color:var(--line)}
 .demo-list button:hover{border-color:var(--scrub)}
 .demo-list small{display:block;color:var(--muted);font-size:.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:820px){.login{grid-template-columns:1fr}.login-brand{padding:1.5rem 16px;gap:1rem}.login-brand h1{margin-top:0;font-size:1.5rem}.login-brand .fine{display:none}}
+
+/* Uneven two-column layouts; stack on narrow screens like .grid-2 */
+.split-7-5{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.split-5-7{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}
+@media (max-width:1000px){.split-7-5,.split-5-7{grid-template-columns:1fr}}
