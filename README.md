@@ -29,13 +29,13 @@ All names, phone numbers, doctors and figures are placeholders.
 Shared code: `portal/assets/portal.css`, `portal.js` (shell, store, table component) and `data.js` (sample data).
 ### Sign-in
 
-`portal/login.html` is the portal's entry page. Every portal page sends signed-out visitors there.
+The public website (`index.html`) is the landing page and needs no login. The staff portal is only reachable through `portal/login.html` (linked as "Staff login" in the site footer); every portal page sends signed-out visitors there.
 
 - Accounts are the users in Administration → Users. What each person sees, and whether they can add, edit or delete, follows their role's permissions in Administration → Roles & permissions.
-- Sample accounts (one per role) are listed on the login page. They share the demo password noted in `portal/assets/data.js`.
+- Passwords are **not** stored in this repository, only their SHA-256 hashes in `portal/assets/data.js`. The administrator keeps the password list privately.
 - Sessions end after 20 idle minutes, or last 7 days with "Keep me signed in". Five wrong passwords lock an account for 5 minutes.
-- The Super Admin sets passwords from Administration → Users → Set password. Sign-ins, failed attempts and record changes appear in the Audit log.
+- To change a password for everyone, update its hash in `data.js` and redeploy. "Set password" in Administration only changes it in that one browser.
 
-**This is not real security.** The site is static, so the sign-in check runs in the visitor's browser and anyone can read or bypass it. Before real patient data goes in, move sign-in and data to a server-side service (for example Supabase, Firebase or an in-house API) that checks every request.
+**This is not real security.** The site is static, so the sign-in check runs in the visitor's browser and a technical visitor can bypass it. Today that only exposes the sample data, because all data lives in each visitor's own browser. Before real patient data goes in, move sign-in and data to a server-side service (for example Supabase, Firebase or an in-house API) that checks every request.
 
 Data is saved in the browser's localStorage only; use "Reset sample data" in the sidebar to start over. There is no server, login or real messaging yet.

@@ -97,6 +97,15 @@ const auth={
   firstAllowed(){return PAGES.find(p=>auth.can(p.mod))||null;},
 };
 
+/* When passwords are rotated in data.js, replace the user list saved in this browser and end old sessions. */
+(function(){
+  const v=window.ACCOUNTS_VERSION;if(!v)return;
+  let saved=null;try{saved=localStorage.getItem(PREFIX+"accountsVersion");}catch(e){}
+  if(saved===v)return;
+  try{localStorage.removeItem(PREFIX+"users");localStorage.setItem(PREFIX+"accountsVersion",v);}catch(e){}
+  delete mem.users;auth.clear();
+})();
+
 /* Gate every portal page except the login page. */
 const FILE=location.pathname.split("/").pop()||"index.html";
 const PAGE=PAGES.find(p=>p.file===FILE)||null;

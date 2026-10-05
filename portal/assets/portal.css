@@ -221,6 +221,8 @@ button.who:hover{border-color:var(--line)}
 .login-brand .brand small{font-size:.7rem;letter-spacing:.1em;opacity:.7}
 .login-brand h1{font-family:var(--f-display);font-weight:400;font-size:clamp(1.8rem,3.4vw,2.6rem);line-height:1.15;color:#fff;margin-top:auto}
 .login-brand p{color:#b5cbc5;max-width:40ch}
+.login-brand .back-public{color:#5cc0aa;font-weight:600;text-decoration:none;font-size:.9rem}
+.login-brand .back-public:hover{text-decoration:underline}
 .login-brand .fine{font-size:.78rem;color:#93a8a2;margin-top:auto;max-width:44ch}
 .login-main{display:flex;align-items:center;justify-content:center;padding:2.5rem 16px}
 .login-card{width:100%;max-width:400px;display:grid;gap:1.1rem}

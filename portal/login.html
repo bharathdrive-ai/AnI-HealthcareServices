@@ -17,8 +17,9 @@
       <span><b>JAC Portal</b><small>MEDICAL COLLEGE &amp; HOSPITAL</small></span>
     </a>
     <h1>Staff sign-in</h1>
-    <p>Appointments, patients, wards, pharmacy and rosters in one place. What you see depends on your role.</p>
-    <p class="fine">Demo system with sample data. Sign-in runs in your browser and does not protect real records. Don't enter real patient information.</p>
+    <p>For authorized JAC staff only. Patients and visitors can find OPD timings, doctors and appointments on the public website.</p>
+    <a class="back-public" href="../index.html">← Back to the public website</a>
+    <p class="fine">Access is logged. If you are not JAC staff, please close this page.</p>
   </section>
 
   <main class="login-main">
@@ -31,7 +32,7 @@
       <div class="notice" id="error" role="alert" hidden></div>
       <div class="field">
         <label for="username">Username</label>
-        <input id="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. neha.jain">
+        <input id="username" autocomplete="username" autocapitalize="none" spellcheck="false">
       </div>
       <div class="field">
         <label for="password">Password</label>
@@ -42,19 +43,12 @@
       </div>
       <label class="check" for="remember"><input id="remember" type="checkbox"> Keep me signed in on this device for 7 days</label>
       <button class="btn primary" type="submit" id="submitBtn">Sign in</button>
-      <p class="muted" style="font-size:.8rem;margin:0">Forgot your password? Ask the Super Admin to set a new one in Administration → Users.</p>
-
-      <div class="demo">
-        <h3>Sample accounts</h3>
-        <p class="muted" style="font-size:.78rem;margin:0 0 .6rem">Pick one to fill in its username and the shared demo password.</p>
-        <div class="demo-list" id="demoList"></div>
-      </div>
+      <p class="muted" style="font-size:.8rem;margin:0">Forgot your password? Contact the hospital IT administrator.</p>
     </form>
   </main>
 </div>
 <script>
 const {db,esc,auth,PAGES}=Portal;
-const DEMO_PASSWORD="JacDemo@2026"; // shared by every seeded sample account (see assets/data.js)
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search);
 
@@ -71,11 +65,6 @@ if(auth.session()){const d=destination();if(d)location.replace(d);}
 if(params.get("expired")) {$("info").textContent="You were signed out after 20 minutes without activity.";$("info").hidden=false;}
 else if(params.get("signedout")) {$("info").textContent="You've signed out.";$("info").hidden=false;}
 else if(params.get("next")) {$("info").textContent="Sign in to continue.";$("info").hidden=false;}
-
-const users=db.get("users").filter(u=>u.status==="Active");
-const seen=new Set();
-$("demoList").innerHTML=users.filter(u=>!seen.has(u.role)&&seen.add(u.role)).map(u=>`<button type="button" data-u="${esc(u.username)}"><b>${esc(db.find("roles",u.role)?.name||"")}</b><small>${esc(u.name)} · ${esc(u.username)}</small></button>`).join("");
-$("demoList").querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{$("username").value=b.dataset.u;$("password").value=DEMO_PASSWORD;$("submitBtn").focus();});
 
 $("togglePw").onclick=()=>{const p=$("password"),show=p.type==="password";p.type=show?"text":"password";$("togglePw").textContent=show?"Hide":"Show";$("togglePw").setAttribute("aria-pressed",show);};
 

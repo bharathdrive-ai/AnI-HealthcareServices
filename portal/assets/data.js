@@ -227,17 +227,17 @@ const permMap={
   ROL0006:m=>["Staff","Roster & Leave","Holidays"].includes(m)?P(1,1,1,1):(m==="Dashboard"||m==="Reports"?P(1,0,0,0):P(0,0,0,0)),
 };
 const permissions=roles.map(r=>({id:r.id,perms:Object.fromEntries(MODULES.map(m=>[m,permMap[r.id](m)]))}));
-/* Demo sign-in: every sample account uses the password JacDemo@2026.
-   Stored as SHA-256("jac:<username>:<password>"). */
+/* Staff sign-in: SHA-256("jac:<username>:<password>") per account.
+   Passwords are not stored in this repository. */
 const PW={
-  "admin":"5738248bb95630b29959a5f1a0cecb71bd23ab5174f5bb0d31e8e1b9f1f25689",
-  "neha.jain":"6e4d5fc322fef355fb659c7d128265507cea16db7ef4efff960bdba7afb60b79",
-  "meera.iyer":"1b4beae70ae063c79793d9be6d85745c21620ebb9dc7baa1c90421c326863007",
-  "rohan.kulkarni":"4954f113439908937ddb12fd39846c775284896b3df09df04876eb5f903b541e",
-  "lakshmi.pillai":"e35f044ff8225597a9fd6e90af5007ec460fa1c86355c9e70f5606790da81488",
-  "ravi.kumar":"93c966562fb088ffc61ac3dda44655b9931fc5418ea42642c3a387826c51f0d3",
-  "hr.desk":"e9f24b995827b9125a9e3e24c8e76b2ca65941152bd7e6d1e667ea06069fafb9",
-  "frontdesk2":"7575a964c6b7d35d577280d7a4cbed92e0c61ba840100a1ba01203f6995fb997"
+  "admin":"2c7cfdafc6bbf2f8888117247128e8c92a2e3525ccc8dff12c47f622d5855b53",
+  "neha.jain":"6259708a24fd937fc4af7aff6dc92e2b131437a417aa0da58f65054c33fae850",
+  "meera.iyer":"f3bc0aff78bd4eff578e597b70efcd6a9344588c55fdc3ca3f17574384a9c37e",
+  "rohan.kulkarni":"559c4d1833481a22d8bbe5a183fccf5bb970a241699d44c8dbd5325a9ef798dd",
+  "lakshmi.pillai":"581cf7ef47b96212b00dcda73bc57d2e88541303770d95b0d793275e5455d585",
+  "ravi.kumar":"e66b940b48fb7f3d6e5ba7e364a6ed25679484c8307d24454d896272ecbaedff",
+  "hr.desk":"d975ebf2a8c07a9820f4c7cd89cc566c93a1b1221fd6ba49bfb51b8c82f646dd",
+  "frontdesk2":"e700a86c18ac4907931ee97f2e4f78c47515fd40abb79b7bdce26ea1d6051e2d"
 };
 const users=[
   ["USR0001","admin","Records Admin","ROL0001","admin@jac.example"],
@@ -267,5 +267,7 @@ const audit=[
 
 const hospital={id:"HOSP",name:"JAC Medical College & Hospital",regNo:"KA/BLR/CE/2026/00451",nabh:"NABH-H-2021-0187",nmc:"NMC/MBBS/150/2019",address:"Hospital Road, Sector 12, Bengaluru 560 000",phone:"+91 80 4000 1000",email:"info@jac.example",beds:1050,icuBeds:96,ots:14,established:"1987",gstin:"29AAATJ0000A1Z0"};
 
+/* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
+window.ACCOUNTS_VERSION="2026-10-06";
 window.SEED={hospital,departments,wards,rooms,roomTypes,beds,staff,patients,appointments,services,orders,suppliers,medicines,batches,prescriptions,dispenses,returns,roster,shifts,leaves,holidays,templates,rules,notifLog,roles,permissions,users,settings,audit,MODULES};
 })();
