@@ -10,33 +10,34 @@
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <meta property="og:title" content="JAC Medical College &amp; Hospital">
 <meta property="og:image" content="https://bharathdrive-ai.github.io/jac-hospital/assets/jac-logo-900.png">
-<meta name="theme-color" content="#0b5cc0">
+<meta name="theme-color" content="#1f6f61">
 <script>/* Apply a saved theme before the page paints */try{var t=localStorage.getItem("jac.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 /* Layout: a teaching hospital's notice board. Two halves (Hospital / College) share one spine; the OPD board is the hero.
-   Palette taken from the JAC logo: royal blue (J, C), orange (A), teal (pulse wave), leaf green (care). */
+   Light theme: surgical green with the logo's orange. Dark theme: the logo's royal blue. */
 :root{
-  --bg:#f5f8fc;          /* clinic white, cool blue tint */
+  /* Light theme: original surgical green. Dark theme (below): logo blue. */
+  --bg:#f6f8f7;          /* ward white, slightly green */
   --surface:#ffffff;
-  --ink:#0b1d36;         /* deep navy */
-  --muted:#46597a;
-  --line:#d5e0ee;
-  --scrub:#0b5cc0;       /* logo royal blue: primary accent */
-  --scrub-soft:#e4eefb;
+  --ink:#10221e;         /* deep scrub ink */
+  --muted:#4f6560;
+  --line:#d6e0dd;
+  --scrub:#1f6f61;       /* surgical green: primary accent */
+  --scrub-soft:#e2efeb;
   --brass:#b04500;       /* logo orange, deepened for readable text: college & programmes */
   --orange:#f07818;      /* logo orange as drawn: decoration only */
-  --brass-soft:#fdeee2;
+  --brass-soft:#fbeee3;
   --teal:#0a9bb0;        /* logo pulse wave */
   --leaf:#5aa52c;        /* logo leaves */
   --on-accent:#ffffff;
-  --alert:#c62a2a;       /* emergency only */
-  --alert-soft:#fde8e8;
-  --ok:#23853b;
-  --footer-bg:#0b1d36;
-  --footer-ink:#e6eef9;
+  --alert:#c2362b;       /* emergency only */
+  --alert-soft:#fbe9e7;
+  --ok:#2c7a3f;
+  --footer-bg:#10221e;
+  --footer-ink:#e3ece9;
   --f-display:"Young Serif", Georgia, "Times New Roman", serif;
   --f-body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -615,7 +616,7 @@ function syncTheme(){
   const t=current();
   root.setAttribute("data-theme",t);
   themeBtn.setAttribute("aria-label",t==="dark"?"Switch to light theme":"Switch to dark theme");
-  document.querySelector('meta[name="theme-color"]').setAttribute("content",t==="dark"?"#081426":"#0b5cc0");
+  document.querySelector('meta[name="theme-color"]').setAttribute("content",t==="dark"?"#081426":"#1f6f61");
 }
 themeBtn.addEventListener("click",()=>{
   const next=current()==="dark"?"light":"dark";

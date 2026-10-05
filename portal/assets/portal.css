@@ -1,13 +1,13 @@
 /* JAC Hospital Portal — shared styles. Layout: fixed sidebar + topbar + content grid. */
-/* Palette from the JAC logo, shared with the public site: royal blue, orange, teal, leaf green. */
 :root{
-  --bg:#f3f6fb; --surface:#ffffff; --surface-2:#f6f9fd;
-  --ink:#0b1d36; --muted:#4a5d7c; --line:#d7e1ee;
-  --scrub:#0b5cc0; --scrub-soft:#e4eefb; --brass:#b04500; --orange:#f07818;
+  /* Light theme: original surgical green. Dark theme (below): logo blue. */
+  --bg:#f3f6f5; --surface:#ffffff; --surface-2:#f8faf9;
+  --ink:#10221e; --muted:#53685f; --line:#dbe4e1;
+  --scrub:#1f6f61; --scrub-soft:#e2efeb; --brass:#b04500; --orange:#f07818;
   --teal:#0a9bb0; --leaf:#5aa52c; --on-accent:#ffffff;
-  --ok:#1a6e2f; --ok-soft:#e3f3e7; --warn:#9c5a00; --warn-soft:#fdf0dc;
-  --alert:#c62a2a; --alert-soft:#fde8e8; --info:#076474; --info-soft:#def3f6;
-  --side:#0b1d36; --side-ink:#c9d6ea; --side-active:#0b5cc0;
+  --ok:#1a6e2f; --ok-soft:#e3f2e6; --warn:#9c5a00; --warn-soft:#fbf0dc;
+  --alert:#c2362b; --alert-soft:#fbe9e7; --info:#2a5d9f; --info-soft:#e4ecf7;
+  --side:#10221e; --side-ink:#cfe0db; --side-active:#1f6f61;
   --f-display:"Young Serif", Georgia, serif;
   --f-body:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -263,7 +263,7 @@ button.who:hover{border-color:var(--line)}
 .theme-btn .moon{display:none}
 :root[data-theme="dark"] .theme-btn .sun{display:none}
 :root[data-theme="dark"] .theme-btn .moon{display:block}
-.login-brand{background:linear-gradient(160deg,#0b1d36 0%,#0b3a73 60%,#0a6f86 100%)}
+.login-brand{background:linear-gradient(160deg,var(--side) 0%,color-mix(in srgb,var(--side-active) 70%,var(--side)) 60%,color-mix(in srgb,var(--teal) 70%,var(--side)) 100%)}
 .login-brand .brand-logo img{height:52px}
 .login-brand .back-public{color:#7fd3e0}
 .login-main{position:relative}
