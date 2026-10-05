@@ -39,8 +39,8 @@ h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
 .side{background:var(--side);color:var(--side-ink);position:sticky;top:0;height:100vh;overflow-y:auto;padding:1rem .75rem 2rem}
 .side .brand{display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem 1.2rem;color:#fff;text-decoration:none}
 .side .brand b{font-family:var(--f-display);font-weight:400;font-size:1.15rem;display:block;line-height:1.1}
-.side .brand small{font-size:.66rem;letter-spacing:.08em;opacity:.7}
-.side .group{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;opacity:.55;padding:.9rem .6rem .35rem}
+.side .brand small{font-size:.72rem;letter-spacing:.08em;opacity:.7}
+.side .group{font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;opacity:.55;padding:.9rem .6rem .35rem}
 .side nav a{display:flex;align-items:center;gap:.6rem;padding:.48rem .6rem;border-radius:6px;color:var(--side-ink);text-decoration:none;font-size:.88rem}
 .side nav a .no{font-family:var(--f-mono);font-size:.7rem;opacity:.55;width:1.4rem}
 .side nav a:hover{background:rgba(255,255,255,.06);color:#fff}
@@ -156,7 +156,7 @@ dialog .mf{display:flex;justify-content:flex-end;gap:.5rem;padding:.8rem 1.1rem;
 .cal .d{background:var(--surface);min-height:78px;padding:.35rem .4rem;font-size:.75rem;min-width:0}
 .cal .d.out{background:var(--surface-2);color:var(--muted)}
 .cal .d.today .dn{background:var(--scrub);color:var(--on-accent);border-radius:4px;padding:0 .3rem}
-.cal .d .ev{display:block;margin-top:.2rem;padding:.1rem .3rem;border-radius:3px;background:var(--alert-soft);color:var(--alert);font-size:.68rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal .d .ev{display:block;margin-top:.2rem;padding:.1rem .3rem;border-radius:3px;background:var(--alert-soft);color:var(--alert);font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal .d .ev.dept{background:var(--warn-soft);color:var(--warn)}
 .cal .d .ev.inst{background:var(--info-soft);color:var(--info)}
 .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:.45rem}
@@ -234,7 +234,7 @@ button.who:hover{border-color:var(--line)}
 .pw-wrap input{padding-right:4.2rem}
 .pw-wrap button{position:absolute;right:.35rem;top:50%;transform:translateY(-50%)}
 .check{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--ink);font-weight:400}
-.check input{width:auto}
+.check input{width:20px;height:20px;flex:none;accent-color:var(--scrub)}
 .login-card .btn.primary{justify-content:center;padding:.75rem;font-size:.95rem}
 .notice{padding:.65rem .8rem;border-radius:6px;font-size:.85rem;background:var(--alert-soft);color:var(--alert)}
 .notice.info{background:var(--info-soft);color:var(--info)}
