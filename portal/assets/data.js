@@ -76,7 +76,7 @@ const patients=firstNames.map((f,i)=>({
   dob:`${1950+((i*7)%55)}-${String(1+(i*5)%12).padStart(2,"0")}-${String(1+(i*11)%27).padStart(2,"0")}`,
   phone:`9${String(800000000+i*7654321).slice(0,9)}`,blood:blood[i%blood.length],
   city:["Bengaluru","Mysuru","Tumakuru","Mandya","Hosur"][i%5],history:hist[i%hist.length],
-  type:i%4===0?"IPD":"OPD",status:i%4===0?"Admitted":(i%7===3?"Discharged":"Active"),registered:D(-((i*17)%300)),
+  type:i%4===0?"IPD":"OPD",status:i%4===0?"Admitted":(i%7===3?"Discharged":"Active"),registered:D(-8-((i*17)%300)) /* before every sample visit (earliest is 5 days ago) */,
   insurance:["Ayushman Bharat","Star Health","None","CGHS","None"][i%5],
 }));
 
