@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Patient Management · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div id="list"></div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,modal,lookup,today,addDays,fmtDate,inr}=Portal;
+const T=today();
+const age=dob=>{if(!dob)return "—";const b=new Date(dob+"T00:00"),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a;};
+
+function refreshKpis(){
+  const p=db.get("patients");
+  kpis("#kpis",[
+    {l:"Registered patients",n:p.length},
+    {l:"New in 30 days",n:p.filter(x=>x.registered>=addDays(T,-30)).length,t:"up"},
+    {l:"Outpatients (active)",n:p.filter(x=>x.type==="OPD"&&x.status==="Active").length},
+    {l:"Inpatients",n:p.filter(x=>x.status==="Admitted").length},
+    {l:"Insured",n:Math.round(p.filter(x=>x.insurance&&x.insurance!=="None").length/Math.max(1,p.length)*100)+"%",d:"Scheme or private cover"},
+  ]);
+}
+
+function journey(id){
+  const p=db.find("patients",id);
+  const ev=[{d:p.registered,t:"Registered",s:`UHID ${p.id} created`}];
+  db.get("appointments").filter(a=>a.patient===id).forEach(a=>ev.push({d:a.date,t:`OPD visit · ${lookup.dept(a.dept)}`,s:`${a.slot} with ${lookup.staff(a.doctor)} · ${a.reason||a.type}`,st:a.status}));
+  db.get("orders").filter(o=>o.patient===id).forEach(o=>ev.push({d:o.date,t:db.find("services",o.service)?.name||o.service,s:`Ordered by ${lookup.staff(o.doctor)} · ${o.priority}`,st:o.status}));
+  db.get("prescriptions").filter(r=>r.patient===id).forEach(r=>ev.push({d:r.date,t:`Prescription ${r.id}`,s:r.items.map(i=>lookup.med(i.med)).join(", "),st:r.status}));
+  ev.sort((a,b)=>b.d.localeCompare(a.d));
+  const billed=db.get("orders").filter(o=>o.patient===id).reduce((s,o)=>s+(db.find("services",o.service)?.price||0),0);
+  modal({title:`${p.name} · ${p.id}`,wide:true,body:`
+    <div class="grid-2" style="gap:1.5rem">
+      <div>
+        <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem">Demographics</h3>
+        <table class="dt"><tbody>
+          ${[["Age / gender",`${age(p.dob)} y · ${p.gender}`],["Date of birth",fmtDate(p.dob)],["Mobile",`<span class="mono">${esc(p.phone)}</span>`],["Blood group",esc(p.blood||"—")],["City",esc(p.city||"—")],["Insurance",esc(p.insurance||"None")],["Registered",fmtDate(p.registered)],["Status",pill(p.status)]].map(([k,v])=>`<tr><td class="muted">${k}</td><td>${v}</td></tr>`).join("")}
+        </tbody></table>
+        <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:1rem 0 .5rem">Medical history</h3>
+        <p>${esc(p.history||"No history recorded.")}</p>
+        <p class="muted" style="margin-top:.6rem;font-size:.8rem">Services billed: <b class="mono">${inr(billed)}</b></p>
+      </div>
+      <div>
+        <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.8rem">Patient journey</h3>
+        <ol class="timeline">${ev.map(e=>`<li><div class="t">${fmtDate(e.d)}</div><div><b>${esc(e.t)}</b> ${e.st?pill(e.st):""}</div><div class="muted" style="font-size:.8rem">${esc(e.s)}</div></li>`).join("")}</ol>
+      </div>
+    </div>`});
+}
+
+const table=crud("#list",{key:"patients",idPrefix:"UHID",noun:"patient",addLabel:"Register patient",title:"Patient register",searchPlaceholder:"Search name, UHID or mobile",onChange:refreshKpis,
+  filters:[{k:"type",label:"Visit types",options:["OPD","IPD"]},{k:"status",label:"Statuses",options:["Active","Admitted","Discharged"]},{k:"gender",label:"Genders",options:["Male","Female","Other"]}],
+  columns:[
+    {k:"id",label:"UHID",fmt:v=>`<span class="mono">${esc(v)}</span>`},
+    {k:"name",label:"Patient",fmt:(v,r)=>`<b>${esc(v)}</b><div class="muted" style="font-size:.75rem">${age(r.dob)} y · ${esc(r.gender)}</div>`},
+    {k:"phone",label:"Mobile",fmt:v=>`<span class="mono">${esc(v)}</span>`},
+    {k:"blood",label:"Blood"},
+    {k:"history",label:"History",fmt:v=>`<span class="muted">${esc(v||"—")}</span>`},
+    {k:"type",label:"Type",fmt:pill},
+    {k:"status",label:"Status",fmt:pill},
+  ],
+  fields:[
+    {k:"name",label:"Full name",required:true},{k:"phone",label:"Mobile",required:true,pattern:"^[6-9]\\d{9}$",patternMsg:"10-digit Indian mobile number."},
+    {k:"gender",label:"Gender",type:"select",required:true,options:["Male","Female","Other"]},{k:"dob",label:"Date of birth",type:"date",required:true},
+    {k:"blood",label:"Blood group",type:"select",options:["A+","A-","B+","B-","O+","O-","AB+","AB-"]},{k:"city",label:"City"},
+    {k:"insurance",label:"Insurance / scheme",type:"select",options:["None","Ayushman Bharat","CGHS","ESI","Star Health","Other private"],default:"None"},
+    {k:"type",label:"Visit type",type:"select",required:true,options:["OPD","IPD"],default:"OPD"},
+    {k:"status",label:"Status",type:"select",required:true,options:["Active","Admitted","Discharged"],default:"Active"},
+    {k:"history",label:"Medical history, allergies",type:"textarea",full:true},
+  ],
+  validate:v=>v.dob>T?"Date of birth can't be in the future.":"",
+  defaults:()=>({registered:T}),
+  rowActions:r=>`<button class="btn sm link" data-v="${r.id}">View</button>`,
+  afterRender:tb=>tb.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>journey(b.dataset.v)),
+});
+refreshKpis();
+</script>
+</body>
+</html>

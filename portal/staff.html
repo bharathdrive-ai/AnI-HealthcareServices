@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Staff Management · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div id="list"></div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,modal,lookup,today,fmtDate,daysBetween}=Portal;
+const T=today();
+const ROLES=["Doctor","Nurse","Technician","Pharmacist","Admin","Support"];
+function refreshKpis(){
+  const s=db.get("staff");
+  kpis("#kpis",[
+    {l:"Total staff",n:s.length,d:`${s.filter(x=>x.status==="Active").length} active`},
+    {l:"Doctors",n:s.filter(x=>x.role==="Doctor").length},
+    {l:"Nurses",n:s.filter(x=>x.role==="Nurse").length,d:`Nurse : doctor ${(s.filter(x=>x.role==="Nurse").length/Math.max(1,s.filter(x=>x.role==="Doctor").length)).toFixed(1)} : 1`},
+    {l:"Other staff",n:s.filter(x=>!["Doctor","Nurse"].includes(x.role)).length},
+    {l:"On contract",n:s.filter(x=>x.type==="Contract").length},
+  ]);
+}
+function profile(id){
+  const s=db.find("staff",id);
+  const yrs=(daysBetween(s.joined,T)/365.25).toFixed(1);
+  const lv=db.get("leaves").filter(l=>l.staff===id);
+  const appts=db.get("appointments").filter(a=>a.doctor===id);
+  modal({title:s.name,wide:true,body:`<div class="grid-2" style="gap:1.5rem"><div><table class="dt"><tbody>
+    ${[["Employee ID",`<span class="mono">${s.id}</span>`],["Role",esc(s.role)],["Designation",esc(s.designation)],["Department",esc(lookup.dept(s.dept))],["Qualification",esc(s.qual)],["Experience",`${s.exp} years total · ${yrs} at JAC`],["Joined",fmtDate(s.joined)],["Employment",esc(s.type)],["Mobile",`<span class="mono">${esc(s.phone)}</span>`],["Email",esc(s.email)],["Status",pill(s.status)]].map(([k,v])=>`<tr><td class="muted">${k}</td><td>${v}</td></tr>`).join("")}
+    </tbody></table></div><div>
+    <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem">Leave history</h3>
+    <ul class="list" style="border:1px solid var(--line);border-radius:8px">${lv.map(l=>`<li><div class="grow">${esc(l.type)}<div class="sub">${fmtDate(l.from)} – ${fmtDate(l.to)} · ${l.days} d</div></div>${pill(l.status)}</li>`).join("")||'<li class="empty">No leave taken.</li>'}</ul>
+    ${s.role==="Doctor"?`<h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:1rem 0 .5rem">OPD workload</h3><p><b class="mono">${appts.length}</b> appointments on record · <b class="mono">${appts.filter(a=>a.date===T).length}</b> today</p>`:""}
+    </div></div>`});
+}
+crud("#list",{key:"staff",idPrefix:"STF",noun:"staff member",addLabel:"Add staff",title:"Staff directory",searchPlaceholder:"Search name, qualification or ID",onChange:refreshKpis,
+  filters:[{k:"role",label:"Roles",options:ROLES},{k:"dept",label:"Departments",options:lookup.depts},{k:"type",label:"Employment",options:["Permanent","Contract","Visiting"]},{k:"status",label:"Statuses",options:["Active","On Leave","Inactive"]}],
+  columns:[{k:"id",label:"ID",fmt:v=>`<span class="mono">${esc(v)}</span>`},
+    {k:"name",label:"Name",fmt:(v,r)=>`<b>${esc(v)}</b><div class="muted" style="font-size:.75rem">${esc(r.designation)}</div>`},
+    {k:"role",label:"Role"},{k:"dept",label:"Department",fmt:v=>esc(lookup.dept(v)),text:r=>lookup.dept(r.dept)},
+    {k:"qual",label:"Qualification",fmt:v=>`<span class="muted">${esc(v)}</span>`},{k:"exp",label:"Exp (yrs)",num:true},
+    {k:"type",label:"Employment"},{k:"status",label:"Status",fmt:pill}],
+  fields:[{k:"name",label:"Full name",required:true},{k:"role",label:"Role",type:"select",required:true,options:ROLES},
+    {k:"designation",label:"Designation",required:true},{k:"dept",label:"Department",type:"select",required:true,options:lookup.depts},
+    {k:"qual",label:"Qualification",required:true},{k:"exp",label:"Experience (years)",type:"number",required:true},
+    {k:"joined",label:"Date of joining",type:"date",required:true},{k:"type",label:"Employment type",type:"select",required:true,options:["Permanent","Contract","Visiting"]},
+    {k:"phone",label:"Mobile",required:true,pattern:"^[6-9]\\d{9}$",patternMsg:"10-digit mobile number."},{k:"email",label:"Email",type:"email",pattern:"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",patternMsg:"Enter a valid email."},
+    {k:"status",label:"Status",type:"select",required:true,options:["Active","On Leave","Inactive"],default:"Active"}],
+  validate:v=>v.joined>T?"Joining date can't be in the future.":(v.exp<0?"Experience can't be negative.":""),
+  rowActions:r=>`<button class="btn sm link" data-v="${r.id}">Profile</button>`,
+  afterRender:tb=>tb.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>profile(b.dataset.v)),
+});
+refreshKpis();
+</script>
+</body>
+</html>

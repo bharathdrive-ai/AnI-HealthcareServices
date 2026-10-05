@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hospital Master · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,tabs,toast,formHTML,readForm,opts,lookup}=Portal;
+function refreshKpis(){
+  const b=db.get("beds");
+  kpis("#kpis",[
+    {l:"Departments",n:db.get("departments").length},
+    {l:"Wards",n:db.get("wards").length},
+    {l:"Rooms",n:db.get("rooms").length},
+    {l:"Beds tracked",n:b.length,d:`${b.filter(x=>x.status==="Free").length} free now`},
+    {l:"Licensed beds",n:db.get("hospital").beds,d:`${db.get("hospital").icuBeds} ICU`},
+  ]);
+}
+refreshKpis();
+const pane=document.getElementById("pane");
+const wardName=id=>db.find("wards",id)?.name||id;
+
+function profile(){
+  const h=db.get("hospital");
+  const F=[{k:"name",label:"Hospital name",required:true,full:true},{k:"regNo",label:"Registration no.",required:true},{k:"gstin",label:"GSTIN"},
+    {k:"nabh",label:"NABH accreditation no."},{k:"nmc",label:"NMC recognition no."},{k:"address",label:"Address",full:true,required:true},
+    {k:"phone",label:"Main phone",required:true},{k:"email",label:"Email",type:"email"},{k:"beds",label:"Licensed beds",type:"number",required:true},
+    {k:"icuBeds",label:"ICU beds",type:"number"},{k:"ots",label:"Operation theatres",type:"number"},{k:"established",label:"Established (year)"}];
+  pane.innerHTML=`<div class="panel-body" id="pf">${formHTML(F,h)}<div style="margin-top:1rem"><button class="btn primary" id="saveP">Save profile</button></div></div>`;
+  document.getElementById("saveP").onclick=()=>{const v=readForm(pane,F);if(!v)return;db.set("hospital",Object.assign(h,v));refreshKpis();toast("Hospital profile saved");};
+}
+
+function departments(){
+  crud(pane,{key:"departments",idPrefix:"DEP",noun:"department",addLabel:"Add department",onChange:refreshKpis,
+    columns:[{k:"code",label:"Code",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"name",label:"Department",fmt:v=>`<b>${esc(v)}</b>`},{k:"head",label:"Head of department"},{k:"block",label:"Block",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"floor",label:"Floor",num:true},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Department name",required:true},{k:"code",label:"Code",required:true,pattern:"^[A-Z]{2,4}$",patternMsg:"2–4 capital letters."},{k:"head",label:"Head of department"},{k:"block",label:"Block",required:true},{k:"floor",label:"Floor",type:"number"},{k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}],
+    validate:(v,rec)=>db.get("departments").some(d=>d.code===v.code&&d.id!==rec.id)?"That department code is already used.":""});
+}
+
+function wards(){
+  crud(pane,{key:"wards",idPrefix:"WRD",noun:"ward",addLabel:"Add ward",onChange:refreshKpis,
+    filters:[{k:"type",label:"Types",options:["General","ICU","Maternity","Private","Isolation"]}],
+    columns:[{k:"name",label:"Ward",fmt:v=>`<b>${esc(v)}</b>`},{k:"type",label:"Type",fmt:v=>`<span class="pill">${esc(v)}</span>`},{k:"dept",label:"Department",fmt:v=>esc(lookup.dept(v)),text:r=>lookup.dept(r.dept)},{k:"block",label:"Block",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"beds",label:"Beds",num:true},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Ward name",required:true},{k:"type",label:"Type",type:"select",required:true,options:["General","ICU","Maternity","Private","Isolation"]},{k:"dept",label:"Department",type:"select",required:true,options:lookup.depts},{k:"block",label:"Block",required:true},{k:"beds",label:"Bed capacity",type:"number",required:true},{k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}]});
+}
+
+function rooms(){
+  crud(pane,{key:"rooms",idPrefix:"RM",noun:"room",addLabel:"Add room",onChange:refreshKpis,
+    filters:[{k:"type",label:"Types",options:()=>db.get("roomTypes")},{k:"status",label:"Statuses",options:["Available","Occupied","Cleaning","Blocked"]}],
+    columns:[{k:"name",label:"Room",fmt:v=>`<b class="mono">${esc(v)}</b>`},{k:"type",label:"Type"},{k:"dept",label:"Department",fmt:v=>esc(lookup.dept(v)),text:r=>lookup.dept(r.dept)},{k:"block",label:"Block",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Room number",required:true},{k:"type",label:"Type",type:"select",required:true,options:()=>db.get("roomTypes")},{k:"dept",label:"Department",type:"select",required:true,options:lookup.depts},{k:"block",label:"Block",required:true},{k:"status",label:"Status",type:"select",required:true,options:["Available","Occupied","Cleaning","Blocked"],default:"Available"}]});
+}
+
+function beds(){
+  const W=db.get("wards");let ward=W[0].id;
+  const STATES=["Free","Occupied","Cleaning","Blocked"],CLS={Free:"free",Occupied:"occ",Cleaning:"clean",Blocked:"blocked"};
+  pane.innerHTML=`<div class="toolbar"><label for="wardSel" style="margin:0">Ward</label><select id="wardSel" style="width:auto">${opts(W.map(w=>({value:w.id,label:w.name})))}</select>
+    <span class="muted" id="bedSum"></span><span style="flex:1"></span><span class="muted" style="font-size:.78rem">Click a bed to change its status</span></div>
+    <div class="panel-body"><div class="beds" id="bedGrid"></div>
+    <div class="legend" style="padding:1rem 0 0">${STATES.map(s=>`<span><i class="bed ${CLS[s]}" style="padding:0;border:0"></i>${s}</span>`).join("")}</div></div>`;
+  const draw=()=>{
+    const b=db.get("beds").filter(x=>x.ward===ward);
+    document.getElementById("bedSum").textContent=STATES.map(s=>`${b.filter(x=>x.status===s).length} ${s.toLowerCase()}`).join(" · ");
+    document.getElementById("bedGrid").innerHTML=b.map(x=>`<button type="button" class="bed ${CLS[x.status]}" data-b="${x.id}" title="${esc(x.no)} · ${x.status}">${esc(x.no)}<br><small>${x.status}</small></button>`).join("")||`<p class="muted">No beds set up for this ward.</p>`;
+    pane.querySelectorAll("[data-b]").forEach(btn=>btn.onclick=()=>{
+      const all=db.get("beds"),r=all.find(x=>x.id===btn.dataset.b);
+      r.status=STATES[(STATES.indexOf(r.status)+1)%STATES.length];db.set("beds",all);draw();refreshKpis();toast(`${r.no} marked ${r.status.toLowerCase()}`);
+    });
+  };
+  document.getElementById("wardSel").onchange=e=>{ward=e.target.value;draw();};
+  draw();
+}
+
+tabs("#tabs",["Hospital profile","Departments","Wards","Rooms","Bed board"],i=>[profile,departments,wards,rooms,beds][i]());
+</script>
+</body>
+</html>

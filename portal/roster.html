@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duty Roster &amp; Leave · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,tabs,toast,opts,lookup,today,addDays,fmtDate,daysBetween}=Portal;
+const T=today();
+const dow=(new Date(T+"T00:00").getDay()+6)%7; // 0 = Monday
+const weekStart=addDays(T,-dow);
+const WEEK=Array.from({length:7},(_,i)=>addDays(weekStart,i));
+const CYCLE=["M","E","N","O"];
+const shiftName=c=>db.get("shifts").find(s=>s.id===c)?.name||c;
+const onLeave=(id,date)=>db.get("leaves").find(l=>l.staff===id&&l.status==="Approved"&&l.from<=date&&l.to>=date);
+const cell=(id,i)=>onLeave(id,WEEK[i])?"L":db.get("roster").find(r=>r.id===id)?.days[i]||"O";
+
+function refreshKpis(){
+  const r=db.get("roster"),L=db.get("leaves");
+  kpis("#kpis",[
+    {l:"Rostered staff",n:r.length},
+    ...["M","E","N"].map(c=>({l:`${shiftName(c)} shift today`,n:r.filter(x=>cell(x.id,dow)===c).length})),
+    {l:"On leave today",n:r.filter(x=>cell(x.id,dow)==="L").length},
+    {l:"Leave requests pending",n:L.filter(l=>l.status==="Pending").length,t:L.some(l=>l.status==="Pending")?"down":""},
+  ]);
+}
+refreshKpis();
+const pane=document.getElementById("pane");
+
+function roster(){
+  const S=db.get("shifts");
+  pane.innerHTML=`<div class="toolbar"><select id="rRole" style="width:auto" aria-label="Role"><option value="">All roles</option>${opts(["Doctor","Nurse","Technician","Pharmacist"])}</select>
+    <select id="rDept" style="width:auto" aria-label="Department"><option value="">All departments</option>${opts(lookup.depts())}</select>
+    <span class="muted" style="font-size:.8rem">Week of ${fmtDate(weekStart)} · click a shift to change it</span></div>
+    <div class="legend" style="padding:.7rem 1rem 0">${S.map(s=>`<span><b class="mono sh-${s.id}">${s.id}</b> ${esc(s.name)}${s.start?` <span class="mono">${s.start}–${s.end}</span>`:""}</span>`).join("")}</div>
+    <div class="table-wrap"><table class="dt roster"><thead><tr><th class="noclick">Staff</th>${WEEK.map((d,i)=>`<th class="noclick" style="text-align:center;${i===dow?"color:var(--scrub)":""}">${new Date(d+"T00:00").toLocaleDateString("en-IN",{weekday:"short",day:"2-digit"})}</th>`).join("")}</tr></thead><tbody id="rBody"></tbody><tfoot id="rFoot"></tfoot></table></div>`;
+  const draw=()=>{
+    const role=document.getElementById("rRole").value,dept=document.getElementById("rDept").value;
+    const R=db.get("roster").filter(r=>{const s=db.find("staff",r.id);return s&&(!role||s.role===role)&&(!dept||s.dept===dept);});
+    document.getElementById("rBody").innerHTML=R.map(r=>{const s=db.find("staff",r.id);return `<tr><td><b>${esc(s.name)}</b><div class="muted" style="font-size:.72rem">${esc(s.role)} · ${esc(lookup.dept(s.dept))}</div></td>${WEEK.map((d,i)=>{const c=cell(r.id,i);return `<td class="sh"><button type="button" class="btn sm link sh-${c}" data-id="${r.id}" data-i="${i}" ${c==="L"?"disabled title='Approved leave'":""} aria-label="${esc(s.name)} ${d}: ${shiftName(c)}">${c}</button></td>`;}).join("")}</tr>`;}).join("")||`<tr><td colspan="8" class="empty">No rostered staff match.</td></tr>`;
+    document.getElementById("rFoot").innerHTML=["M","E","N"].map(c=>`<tr><td class="muted">${shiftName(c)} cover</td>${WEEK.map((_,i)=>{const n=R.filter(r=>cell(r.id,i)===c).length;return `<td class="sh ${n<2?"sh-L":""}">${n}</td>`;}).join("")}</tr>`).join("");
+    pane.querySelectorAll("#rBody button[data-id]:not(:disabled)").forEach(b=>b.onclick=()=>{
+      const all=db.get("roster"),r=all.find(x=>x.id===b.dataset.id),i=+b.dataset.i;
+      r.days[i]=CYCLE[(CYCLE.indexOf(r.days[i])+1)%CYCLE.length];db.set("roster",all);draw();refreshKpis();
+    });
+  };
+  pane.querySelectorAll("#rRole,#rDept").forEach(s=>s.onchange=draw);draw();
+}
+
+function leaves(){
+  const t=crud(pane,{key:"leaves",idPrefix:"LV",noun:"leave request",addLabel:"Apply leave",searchPlaceholder:"Search staff or reason",onChange:refreshKpis,
+    filters:[{k:"status",label:"Statuses",options:["Pending","Approved","Rejected"]},{k:"type",label:"Leave types",options:["Casual leave","Sick leave","Earned leave","Conference leave","Maternity leave"]}],
+    columns:[{k:"id",label:"ID",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"staff",label:"Staff",fmt:v=>`<b>${esc(lookup.staff(v))}</b><div class="muted" style="font-size:.72rem">${esc(db.find("staff",v)?.role||"")}</div>`,text:r=>lookup.staff(r.staff)},
+      {k:"type",label:"Type"},{k:"from",label:"Dates",fmt:(v,r)=>`<span class="mono">${fmtDate(r.from)} – ${fmtDate(r.to)}</span>`},{k:"days",label:"Days",num:true},{k:"reason",label:"Reason",fmt:v=>`<span class="muted">${esc(v)}</span>`},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"staff",label:"Staff member",type:"select",required:true,options:()=>db.get("staff").map(s=>({value:s.id,label:`${s.name} · ${s.role}`}))},
+      {k:"type",label:"Leave type",type:"select",required:true,options:["Casual leave","Sick leave","Earned leave","Conference leave","Maternity leave"]},
+      {k:"from",label:"From",type:"date",required:true},{k:"to",label:"To",type:"date",required:true},{k:"reason",label:"Reason",full:true,required:true},
+      {k:"status",label:"Status",type:"select",required:true,options:["Pending","Approved","Rejected"],default:"Pending"}],
+    validate:(v,rec)=>{
+      if(v.to<v.from) return "End date is before start date.";
+      v.days=daysBetween(v.from,v.to)+1;
+      const clash=db.get("leaves").find(l=>l.staff===v.staff&&l.id!==rec.id&&l.status!=="Rejected"&&l.from<=v.to&&l.to>=v.from);
+      return clash?`Overlaps ${clash.id} (${fmtDate(clash.from)} – ${fmtDate(clash.to)}).`:"";
+    },
+    rowActions:r=>r.status==="Pending"?`<button class="btn sm link" data-a="Approved" data-id="${r.id}">Approve</button><button class="btn sm link danger" data-a="Rejected" data-id="${r.id}">Reject</button>`:"",
+    afterRender:tb=>tb.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{const l=db.get("leaves"),x=l.find(y=>y.id===b.dataset.id);x.status=b.dataset.a;db.set("leaves",l);t.render();refreshKpis();toast(`${x.id} ${x.status.toLowerCase()} · ${lookup.staff(x.staff)}`);}),
+  });
+}
+
+function availability(){
+  const R=db.get("roster");
+  pane.innerHTML=`<div class="panel-body grid-3">`+["M","E","N","L"].map(c=>{const list=R.filter(r=>cell(r.id,dow)===c).map(r=>db.find("staff",r.id));
+    const sh=db.get("shifts").find(s=>s.id===c);
+    return `<div class="panel"><div class="panel-head"><h2 class="sh-${c}">${esc(sh.name)}${sh.start?` <span class="mono muted" style="font-weight:400">${sh.start}–${sh.end}</span>`:" today"}</h2><span class="spacer"></span><span class="mono">${list.length}</span></div>
+      <ul class="list">${list.map(s=>`<li><div class="grow"><b>${esc(s.name)}</b><div class="sub">${esc(s.role)} · ${esc(lookup.dept(s.dept))}</div></div></li>`).join("")||'<li class="empty">Nobody.</li>'}</ul></div>`;}).join("")+`</div>`;
+}
+
+tabs("#tabs",["Weekly roster","Leave requests","Today's availability"],i=>[roster,leaves,availability][i]());
+</script>
+</body>
+</html>

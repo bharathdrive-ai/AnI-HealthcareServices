@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-head"><h2>Today's appointments</h2><span class="spacer"></span><a class="btn sm" href="appointments.html">Open booking</a></div>
+      <ul class="list" id="todayAppts"></ul>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Appointments, last 7 days</h2></div>
+      <div id="apptChart"></div>
+    </div>
+  </div>
+  <div class="grid-3">
+    <div class="panel"><div class="panel-head"><h2>Bed occupancy by ward</h2></div><div id="wardOcc"></div></div>
+    <div class="panel"><div class="panel-head"><h2>Stock alerts</h2><span class="spacer"></span><a class="btn sm" href="inventory.html">Inventory</a></div><ul class="list" id="stockAlerts"></ul></div>
+    <div class="panel"><div class="panel-head"><h2>Staff today</h2><span class="spacer"></span><a class="btn sm" href="roster.html">Roster</a></div><ul class="list" id="staffToday"></ul></div>
+  </div>
+</div>
+<script>
+const {db,esc,today,addDays,pill,kpis,barChart,hbars,lookup,fmtDate,num}=Portal;
+const T=today();
+const appts=db.get("appointments"), beds=db.get("beds"), staff=db.get("staff"), meds=db.get("medicines"), batches=db.get("batches"), leaves=db.get("leaves"), patients=db.get("patients");
+
+const todays=appts.filter(a=>a.date===T).sort((a,b)=>a.slot.localeCompare(b.slot));
+const occ=beds.filter(b=>b.status==="Occupied").length;
+const onLeave=leaves.filter(l=>l.status==="Approved"&&l.from<=T&&l.to>=T).map(l=>l.staff);
+const lowStock=meds.filter(m=>lookup.stock(m.id)<m.reorder);
+const nearExp=batches.filter(b=>b.qty>0&&b.expiry>=T&&b.expiry<=addDays(T,90));
+const expired=batches.filter(b=>b.qty>0&&b.expiry<T);
+const waiting=todays.filter(a=>["Booked","Checked In"].includes(a.status)).length;
+
+kpis("#kpis",[
+  {l:"Appointments today",n:todays.length,d:`${waiting} waiting · ${todays.filter(a=>a.status==="Completed").length} completed`},
+  {l:"Registered patients",n:num(patients.length),d:`${patients.filter(p=>p.registered>=addDays(T,-30)).length} new in 30 days`,t:"up"},
+  {l:"Inpatients",n:patients.filter(p=>p.status==="Admitted").length,d:"Currently admitted"},
+  {l:"Bed occupancy",n:Math.round(occ/beds.length*100)+"%",d:`${occ} of ${beds.length} tracked beds`},
+  {l:"Staff on duty",n:staff.filter(s=>s.status==="Active"&&!onLeave.includes(s.id)).length,d:`${onLeave.length} on leave today`},
+  {l:"Stock alerts",n:lowStock.length+nearExp.length+expired.length,d:`${lowStock.length} low · ${nearExp.length} near expiry · ${expired.length} expired`,t:(lowStock.length+expired.length)?"down":""},
+]);
+
+document.getElementById("todayAppts").innerHTML=todays.length?todays.slice(0,8).map(a=>`<li><span class="mono">${a.slot}</span><div class="grow"><b>${esc(lookup.patient(a.patient))}</b><div class="sub">${esc(lookup.staff(a.doctor))} · ${esc(lookup.dept(a.dept))}</div></div>${pill(a.status)}</li>`).join("")+(todays.length>8?`<li class="sub"><a href="appointments.html">+${todays.length-8} more</a></li>`:""):`<li class="empty">No appointments today.</li>`;
+
+const days=Array.from({length:7},(_,i)=>addDays(T,i-6));
+barChart("#apptChart",{data:days.map(d=>{const a=appts.filter(x=>x.date===d);return {label:new Date(d+"T00:00").toLocaleDateString("en-IN",{weekday:"short"}),values:[a.filter(x=>x.status==="Completed").length,a.filter(x=>!["Completed","Cancelled","No Show"].includes(x.status)).length,a.filter(x=>["Cancelled","No Show"].includes(x.status)).length]};}),
+  series:[{name:"Completed",color:"var(--scrub)"},{name:"Open",color:"var(--warn)"},{name:"Cancelled / no show",color:"var(--alert)"}]});
+
+hbars("#wardOcc",db.get("wards").map(w=>{const b=beds.filter(x=>x.ward===w.id);const p=b.length?Math.round(b.filter(x=>x.status==="Occupied").length/b.length*100):0;return {l:w.name,v:p,tone:p>=85?"alert":p>=70?"warn":""};}),{fmt:v=>v+"%"});
+
+const alerts=[
+  ...expired.map(b=>({t:"Expired",m:lookup.med(b.med),s:`Batch ${b.batch} · ${b.qty} units · expired ${fmtDate(b.expiry)}`})),
+  ...lowStock.map(m=>({t:lookup.stock(m.id)===0?"Out of stock":"Low stock",m:m.name,s:`${lookup.stock(m.id)} in stock · reorder at ${m.reorder}`})),
+  ...nearExp.map(b=>({t:"Near expiry",m:lookup.med(b.med),s:`Batch ${b.batch} · ${b.qty} units · ${fmtDate(b.expiry)}`})),
+];
+document.getElementById("stockAlerts").innerHTML=alerts.length?alerts.slice(0,7).map(a=>`<li><div class="grow"><b>${esc(a.m)}</b><div class="sub">${esc(a.s)}</div></div>${pill(a.t)}</li>`).join(""):`<li class="empty">No stock alerts.</li>`;
+
+const byRole=["Doctor","Nurse","Technician","Pharmacist","Admin","Support"].map(r=>{const all=staff.filter(s=>s.role===r);return {r,on:all.filter(s=>s.status==="Active"&&!onLeave.includes(s.id)).length,all:all.length};});
+document.getElementById("staffToday").innerHTML=byRole.map(x=>`<li><div class="grow">${x.r}s</div><span class="mono">${x.on} / ${x.all}</span></li>`).join("")+
+  onLeave.map(id=>`<li><div class="grow"><b>${esc(lookup.staff(id))}</b><div class="sub">On leave today</div></div>${pill("On Leave")}</li>`).join("");
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Administration · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,tabs,toast,opts}=Portal;
+const roleName=id=>db.find("roles",id)?.name||id;
+function refreshKpis(){
+  const u=db.get("users");
+  kpis("#kpis",[
+    {l:"User accounts",n:u.length,d:`${u.filter(x=>x.status==="Active").length} active`},
+    {l:"Roles",n:db.get("roles").length},
+    {l:"Modules",n:db.get("MODULES").length},
+    {l:"System settings",n:db.get("settings").length},
+  ]);
+}
+refreshKpis();
+const pane=document.getElementById("pane");
+
+function users(){
+  crud(pane,{key:"users",idPrefix:"USR",noun:"user",addLabel:"Add user",searchPlaceholder:"Search users",onChange:refreshKpis,
+    filters:[{k:"role",label:"Roles",options:()=>db.get("roles").map(r=>({value:r.id,label:r.name}))},{k:"status",label:"Statuses",options:["Active","Inactive"]}],
+    columns:[{k:"id",label:"ID",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"name",label:"Name",fmt:(v,r)=>`<b>${esc(v)}</b><div class="muted mono" style="font-size:.75rem">${esc(r.username)}</div>`},
+      {k:"role",label:"Role",fmt:v=>esc(roleName(v)),text:r=>roleName(r.role)},{k:"email",label:"Email"},{k:"lastLogin",label:"Last sign-in",fmt:v=>v?`<span class="mono">${esc(v)}</span>`:'<span class="muted">Never</span>'},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Full name",required:true},{k:"username",label:"Username",required:true,pattern:"^[a-z0-9._]{3,}$",patternMsg:"Lowercase letters, digits, dot or underscore; 3+ characters."},
+      {k:"email",label:"Email",type:"email",required:true,pattern:"^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",patternMsg:"Enter a valid email."},{k:"role",label:"Role",type:"select",required:true,options:()=>db.get("roles").map(r=>({value:r.id,label:r.name}))},
+      {k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}],
+    validate:(v,rec)=>db.get("users").some(u=>u.username===v.username&&u.id!==rec.id)?"That username is already taken.":"",
+    defaults:()=>({lastLogin:""}),
+  });
+}
+
+function roles(){
+  const R=db.get("roles"),P=db.get("permissions"),M=db.get("MODULES");
+  let sel=R[0].id;
+  pane.innerHTML=`<div class="toolbar"><label for="roleSel" style="margin:0">Role</label><select id="roleSel" style="width:auto">${opts(R.map(r=>({value:r.id,label:r.name})))}</select><span class="muted" id="roleDesc"></span><span style="flex:1"></span><button class="btn primary" id="savePerm">Save permissions</button></div>
+    <div class="table-wrap"><table class="dt matrix"><thead><tr><th class="noclick">Module</th><th class="noclick">View</th><th class="noclick">Add</th><th class="noclick">Edit</th><th class="noclick">Delete</th></tr></thead><tbody id="mtx"></tbody></table></div>`;
+  const draw=()=>{
+    const r=R.find(x=>x.id===sel),p=P.find(x=>x.id===sel).perms;
+    document.getElementById("roleDesc").textContent=`${r.desc} · ${r.users} users`;
+    document.getElementById("mtx").innerHTML=M.map(m=>`<tr><td>${esc(m)}</td>${["view","add","edit","del"].map(a=>`<td><input type="checkbox" aria-label="${esc(m)} ${a}" data-m="${esc(m)}" data-a="${a}" ${p[m][a]?"checked":""} ${sel==="ROL0001"?"disabled":""}></td>`).join("")}</tr>`).join("");
+  };
+  document.getElementById("roleSel").onchange=e=>{sel=e.target.value;draw();};
+  document.getElementById("savePerm").onclick=()=>{
+    if(sel==="ROL0001"){toast("Super Admin always has full access.");return;}
+    const p=P.find(x=>x.id===sel).perms;
+    pane.querySelectorAll("#mtx input").forEach(c=>{p[c.dataset.m][c.dataset.a]=c.checked?1:0;if(c.dataset.a!=="view"&&c.checked)p[c.dataset.m].view=1;});
+    db.set("permissions",P);draw();toast("Permissions saved");
+  };
+  draw();
+}
+
+function settings(){
+  crud(pane,{key:"settings",idPrefix:"SET",noun:"setting",addLabel:"Add setting",onChange:refreshKpis,
+    filters:[{k:"group",label:"Groups",options:()=>[...new Set(db.get("settings").map(s=>s.group))]}],
+    columns:[{k:"group",label:"Group",fmt:v=>`<span class="pill">${esc(v)}</span>`},{k:"key",label:"Setting"},{k:"value",label:"Value",fmt:v=>`<span class="mono">${esc(v)}</span>`}],
+    fields:[{k:"group",label:"Group",required:true},{k:"key",label:"Setting",required:true},{k:"value",label:"Value",required:true,full:true}]});
+}
+
+function audit(){
+  crud(pane,{key:"audit",readOnly:true,searchPlaceholder:"Search audit log",
+    columns:[{k:"time",label:"Time",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"user",label:"User",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"action",label:"Action"}]});
+}
+
+tabs("#tabs",["Users","Roles & permissions","System configuration","Audit log"],i=>[users,roles,settings,audit][i]());
+</script>
+</body>
+</html>

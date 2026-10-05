@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reports &amp; Analytics · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div class="panel">
+    <div id="tabs"></div>
+    <div class="toolbar"><label for="range" style="margin:0">Period</label>
+      <select id="range" style="width:auto"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select>
+      <span class="muted" id="rangeNote" style="font-size:.8rem"></span><span style="flex:1"></span><button class="btn" id="csv">Export table as CSV</button></div>
+  </div>
+  <div id="kpis"></div>
+  <div class="grid-2" id="charts"></div>
+  <div class="panel"><div class="panel-head"><h2 id="tblTitle"></h2></div><div class="table-wrap"><table class="dt" id="tbl"></table></div></div>
+</div>
+<script>
+const {db,esc,kpis,tabs,barChart,hbars,lookup,today,addDays,fmtDate,inr,num,toast}=Portal;
+const T=today();
+let tab=0,table={head:[],rows:[],name:""};
+const range=()=>+document.getElementById("range").value;
+const panel=(id,title)=>`<div class="panel"><div class="panel-head"><h2>${esc(title)}</h2></div><div id="${id}"></div></div>`;
+const count=(arr,f)=>{const m={};arr.forEach(x=>{const k=f(x);m[k]=(m[k]||0)+1;});return Object.entries(m).map(([l,v])=>({l,v})).sort((a,b)=>b.v-a.v);};
+function setTable(name,head,rows){
+  table={name,head,rows};
+  document.getElementById("tblTitle").textContent=name;
+  document.getElementById("tbl").innerHTML=`<thead><tr>${head.map((h,i)=>`<th class="noclick" ${i>0&&typeof rows[0]?.[i]==="number"?'style="text-align:right"':""}>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td class="${typeof c==="number"?"num":""}">${typeof c==="number"?num(c):esc(c)}</td>`).join("")}</tr>`).join("")||`<tr><td class="empty" colspan="${head.length}">No data in this period.</td></tr>`}</tbody>`;
+}
+const series=(from,days,list,dateKey)=>{
+  const buckets=days<=30?days:Math.ceil(days/30), step=days<=30?1:30, out=[];
+  for(let i=buckets-1;i>=0;i--){const end=addDays(T,-i*step),start=addDays(end,-(step-1));out.push({start,end,label:step===1?new Date(end+"T00:00").getDate()+"":new Date(end+"T00:00").toLocaleDateString("en-IN",{month:"short"}),items:list.filter(x=>x[dateKey]>=start&&x[dateKey]<=end)});}
+  return out;
+};
+
+function operational(){
+  const from=addDays(T,-range()+1);
+  const A=db.get("appointments").filter(a=>a.date>=from&&a.date<=T),O=db.get("orders").filter(o=>o.date>=from&&o.date<=T);
+  const rev=O.reduce((s,o)=>s+(db.find("services",o.service)?.price||0),0);
+  kpis("#kpis",[{l:"Appointments",n:num(A.length)},{l:"Completed",n:A.length?Math.round(A.filter(a=>a.status==="Completed").length/A.length*100)+"%":"—"},
+    {l:"No-show rate",n:A.length?Math.round(A.filter(a=>a.status==="No Show").length/A.length*100)+"%":"—"},{l:"Service orders",n:O.length},{l:"Service revenue",n:inr(rev)}]);
+  document.getElementById("charts").innerHTML=panel("c1","Appointments over time")+panel("c2","Appointments by department");
+  const s=series(from,Math.min(range(),30)<range()?range():Math.min(range(),30),db.get("appointments"),"date");
+  barChart("#c1",{data:s.slice(-30).map(b=>({label:b.label,values:[b.items.filter(x=>x.status==="Completed").length,b.items.filter(x=>x.status!=="Completed").length]})),series:[{name:"Completed",color:"var(--scrub)"},{name:"Other",color:"var(--warn)"}]});
+  hbars("#c2",count(A,a=>lookup.dept(a.dept)));
+  const D=db.get("departments").map(d=>{const a=A.filter(x=>x.dept===d.id),o=O.filter(x=>db.find("services",x.service)?.dept===d.id);return [d.name,a.length,a.filter(x=>x.status==="Completed").length,a.filter(x=>x.status==="No Show"||x.status==="Cancelled").length,o.length,inr(o.reduce((s,x)=>s+(db.find("services",x.service)?.price||0),0))];}).filter(r=>r[1]||r[4]);
+  setTable("Department activity",["Department","Appointments","Completed","Cancelled / no show","Service orders","Service revenue"],D);
+}
+
+function patient(){
+  const from=addDays(T,-range()+1),P=db.get("patients");
+  const ageOf=p=>{const a=new Date().getFullYear()-+p.dob.slice(0,4);return a<18?"0–17":a<40?"18–39":a<60?"40–59":"60+";};
+  kpis("#kpis",[{l:"Total patients",n:P.length},{l:"New in period",n:P.filter(p=>p.registered>=from).length},{l:"Inpatients",n:P.filter(p=>p.status==="Admitted").length},
+    {l:"Female",n:Math.round(P.filter(p=>p.gender==="Female").length/P.length*100)+"%"},{l:"Insured",n:Math.round(P.filter(p=>p.insurance!=="None").length/P.length*100)+"%"}]);
+  document.getElementById("charts").innerHTML=panel("c1","Patients by age group")+panel("c2","Insurance and schemes");
+  const ages=["0–17","18–39","40–59","60+"];
+  barChart("#c1",{data:ages.map(a=>({label:a,values:[P.filter(p=>ageOf(p)===a&&p.gender==="Male").length,P.filter(p=>ageOf(p)===a&&p.gender==="Female").length]})),series:[{name:"Male",color:"var(--info)"},{name:"Female",color:"var(--brass)"}]});
+  hbars("#c2",count(P,p=>p.insurance||"None"));
+  setTable("Patients by city",["City","Patients","Outpatients","Inpatients","New in period"],[...new Set(P.map(p=>p.city||"Unknown"))].map(c=>{const x=P.filter(p=>(p.city||"Unknown")===c);return [c,x.length,x.filter(p=>p.type==="OPD").length,x.filter(p=>p.status==="Admitted").length,x.filter(p=>p.registered>=from).length];}).sort((a,b)=>b[1]-a[1]));
+}
+
+function staff(){
+  const from=addDays(T,-range()+1),S=db.get("staff"),L=db.get("leaves").filter(l=>l.status==="Approved"&&l.to>=from&&l.from<=T);
+  kpis("#kpis",[{l:"Staff",n:S.length},{l:"Doctors",n:S.filter(s=>s.role==="Doctor").length},{l:"Nurses",n:S.filter(s=>s.role==="Nurse").length},
+    {l:"Leave days taken",n:L.reduce((a,l)=>a+l.days,0)},{l:"Avg experience",n:(S.reduce((a,s)=>a+s.exp,0)/S.length).toFixed(1)+" y"}]);
+  document.getElementById("charts").innerHTML=panel("c1","Staff by role")+panel("c2","Leave days by type");
+  hbars("#c1",count(S,s=>s.role));
+  const lt={};L.forEach(l=>lt[l.type]=(lt[l.type]||0)+l.days);hbars("#c2",Object.entries(lt).map(([l,v])=>({l,v})));
+  if(!L.length) document.getElementById("c2").innerHTML='<p class="empty">No approved leave in this period.</p>';
+  setTable("Staff by department",["Department","Doctors","Nurses","Other","Total","On contract"],db.get("departments").map(d=>{const x=S.filter(s=>s.dept===d.id);return [d.name,x.filter(s=>s.role==="Doctor").length,x.filter(s=>s.role==="Nurse").length,x.filter(s=>!["Doctor","Nurse"].includes(s.role)).length,x.length,x.filter(s=>s.type==="Contract").length];}).filter(r=>r[4]));
+}
+
+function inventory(){
+  const M=db.get("medicines"),B=db.get("batches").filter(b=>b.qty>0);
+  const val=b=>b.qty*b.cost;
+  const buckets=[["Expired",b=>b.expiry<T],["Within 30 days",b=>b.expiry>=T&&b.expiry<=addDays(T,30)],["31–90 days",b=>b.expiry>addDays(T,30)&&b.expiry<=addDays(T,90)],["After 90 days",b=>b.expiry>addDays(T,90)]];
+  kpis("#kpis",[{l:"Stock value",n:inr(Math.round(B.filter(b=>b.expiry>=T).reduce((a,b)=>a+val(b),0)))},{l:"Value at risk",n:inr(Math.round(B.filter(b=>b.expiry<=addDays(T,90)).reduce((a,b)=>a+val(b),0))),d:"Expired or expiring in 90 days",t:"down"},
+    {l:"Below reorder",n:M.filter(m=>lookup.stock(m.id)<m.reorder).length},{l:"Dispensed in period",n:inr(db.get("dispenses").filter(d=>d.date>=addDays(T,-range()+1)).reduce((a,d)=>a+d.amount,0))}]);
+  document.getElementById("charts").innerHTML=panel("c1","Stock value by category (₹)")+panel("c2","Batches by expiry");
+  const cat={};B.filter(b=>b.expiry>=T).forEach(b=>{const c=db.find("medicines",b.med)?.category||"Other";cat[c]=(cat[c]||0)+val(b);});
+  hbars("#c1",Object.entries(cat).map(([l,v])=>({l,v:Math.round(v)})).sort((a,b)=>b.v-a.v),{fmt:inr});
+  hbars("#c2",buckets.map(([l,f],i)=>({l,v:B.filter(f).length,tone:i===0?"alert":i<3?"warn":""})));
+  setTable("Reorder report",["Medicine","Category","In stock","Reorder level","Suggested order"],M.map(m=>{const q=lookup.stock(m.id);return [m.name,m.category,q,m.reorder,Math.max(0,m.reorder*2-q)];}).filter(r=>r[2]<r[3]*1.3).sort((a,b)=>a[2]/a[3]-b[2]/b[3]));
+}
+
+const VIEWS=[operational,patient,staff,inventory];
+function run(){VIEWS[tab]();const n=range();document.getElementById("rangeNote").textContent=`${fmtDate(addDays(T,-n+1))} – ${fmtDate(T)}`;}
+tabs("#tabs",["Operational","Patients","Staff","Inventory"],i=>{tab=i;run();});
+document.getElementById("range").onchange=run;
+document.getElementById("csv").onclick=()=>{
+  const q=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const csv=[table.head,...table.rows].map(r=>r.map(q).join(",")).join("\r\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv"}));
+  a.download=`jac-${table.name.toLowerCase().replace(/[^a-z0-9]+/g,"-")}-${T}.csv`;document.body.appendChild(a);a.click();a.remove();toast(`Exported ${table.rows.length} rows`);
+};
+</script>
+</body>
+</html>

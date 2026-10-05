@@ -1,0 +1,255 @@
+/* JAC Hospital Portal — shared shell, data store and UI helpers.
+   Data lives in localStorage (per browser) and is seeded from data.js. */
+(function(){
+const PAGES=[
+  {no:"01",file:"dashboard.html",title:"Dashboard",group:"Overview"},
+  {no:"02",file:"administration.html",title:"Administration",group:"Overview"},
+  {no:"03",file:"hospital-master.html",title:"Hospital Master",group:"Setup"},
+  {no:"04",file:"appointments.html",title:"Appointment Booking",group:"Patient care"},
+  {no:"05",file:"patients.html",title:"Patient Management",group:"Patient care"},
+  {no:"06",file:"services.html",title:"Medical Services",group:"Patient care"},
+  {no:"07",file:"staff.html",title:"Staff Management",group:"People"},
+  {no:"08",file:"roster.html",title:"Duty Roster & Leave",group:"People"},
+  {no:"09",file:"holidays.html",title:"Holiday Management",group:"People"},
+  {no:"10",file:"inventory.html",title:"Medicine & Inventory",group:"Pharmacy & stock"},
+  {no:"11",file:"pharmacy.html",title:"Pharmacy",group:"Pharmacy & stock"},
+  {no:"12",file:"reports.html",title:"Reports & Analytics",group:"Insights"},
+  {no:"13",file:"notifications.html",title:"Notifications",group:"Insights"},
+];
+
+/* ---------- Store ---------- */
+const PREFIX="jac.portal.";
+const mem={};
+const db={
+  get(key){
+    if(mem[key]) return mem[key];
+    let v=null;
+    try{v=JSON.parse(localStorage.getItem(PREFIX+key));}catch(e){}
+    if(!Array.isArray(v)&&!(v&&typeof v==="object")) v=structuredClone((window.SEED||{})[key]??[]);
+    mem[key]=v; return v;
+  },
+  set(key,val){mem[key]=val;try{localStorage.setItem(PREFIX+key,JSON.stringify(val));}catch(e){}},
+  reset(){
+    try{Object.keys(localStorage).filter(k=>k.startsWith(PREFIX)).forEach(k=>localStorage.removeItem(k));}catch(e){}
+    Object.keys(mem).forEach(k=>delete mem[k]);
+  },
+  find(key,id){return db.get(key).find(r=>r.id===id);},
+};
+
+/* ---------- Helpers ---------- */
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isoLocal=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const today=()=>isoLocal(new Date());
+const addDays=(iso,n)=>{const d=new Date(iso+"T00:00");d.setDate(d.getDate()+n);return isoLocal(d);};
+const fmtDate=iso=>iso?new Date(iso+"T00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}):"—";
+const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN");
+const num=n=>Number(n||0).toLocaleString("en-IN");
+const daysBetween=(a,b)=>Math.round((new Date(b+"T00:00")-new Date(a+"T00:00"))/864e5);
+function uid(prefix,key){
+  const rows=db.get(key);let max=0;
+  rows.forEach(r=>{const m=String(r.id||"").match(/(\d+)$/);if(m)max=Math.max(max,+m[1]);});
+  return prefix+String(max+1).padStart(4,"0");
+}
+const TONE={
+  ok:["active","confirmed","completed","available","in stock","approved","dispensed","paid","enabled","present","free","open","sent","on duty","normal","discharged"],
+  warn:["pending","scheduled","waiting","low stock","on leave","near expiry","partial","draft","cleaning","checked in","in progress","admitted","due"],
+  alert:["cancelled","inactive","expired","out of stock","rejected","no show","blocked","critical","failed","disabled","overdue","emergency"],
+  info:["booked","in consultation","occupied","returned","opd","ipd","new"],
+};
+function pill(text){
+  const t=String(text||"").toLowerCase();
+  const tone=Object.keys(TONE).find(k=>TONE[k].includes(t))||"";
+  return `<span class="pill ${tone}">${esc(text)}</span>`;
+}
+function toast(msg){
+  let t=document.querySelector(".toast");
+  if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t);}
+  t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2200);
+}
+function opts(list,sel){return list.map(o=>{const v=typeof o==="object"?o.value:o,l=typeof o==="object"?o.label:o;return `<option value="${esc(v)}" ${String(v)===String(sel)?"selected":""}>${esc(l)}</option>`;}).join("");}
+
+/* Modal: returns the dialog. buttons: [{label, cls, onClick(dlg) -> false keeps open}] */
+function modal({title,body,buttons=[],wide=false}){
+  const d=document.createElement("dialog");
+  if(wide) d.style.width="min(880px,calc(100vw - 32px))";
+  d.innerHTML=`<div class="mh"><h3 style="font-size:1rem">${esc(title)}</h3><button class="btn sm" data-x aria-label="Close">✕</button></div>
+    <div class="mb">${body}</div><div class="mf"></div>`;
+  const mf=d.querySelector(".mf");
+  [{label:"Cancel"},...buttons].forEach(b=>{
+    const el=document.createElement("button");el.type="button";el.className="btn "+(b.cls||"");el.textContent=b.label;
+    el.onclick=()=>{if(b.onClick&&b.onClick(d)===false)return;d.close();};
+    mf.appendChild(el);
+  });
+  d.querySelector("[data-x]").onclick=()=>d.close();
+  d.addEventListener("close",()=>d.remove());
+  document.body.appendChild(d);d.showModal();
+  return d;
+}
+function confirmBox(title,text,label="Delete"){
+  return new Promise(res=>{
+    const d=modal({title,body:`<p>${esc(text)}</p>`,buttons:[{label,cls:"primary",onClick:()=>{res(true);}}]});
+    d.addEventListener("close",()=>res(false));
+  });
+}
+
+/* Form fields: [{k,label,type:text|number|date|time|select|textarea|email|tel,options,required,full,pattern,patternMsg}] */
+function formHTML(fields,rec={}){
+  return `<div class="form-grid">`+fields.map(f=>{
+    const id="f_"+f.k,v=rec[f.k]??f.default??"";
+    const opt=typeof f.options==="function"?f.options():f.options;
+    let input;
+    if(f.type==="select") input=`<select id="${id}">${f.required?"":'<option value="">—</option>'}${opts(opt||[],v)}</select>`;
+    else if(f.type==="textarea") input=`<textarea id="${id}">${esc(v)}</textarea>`;
+    else input=`<input id="${id}" type="${f.type||"text"}" value="${esc(v)}" ${f.step?`step="${f.step}"`:""}>`;
+    return `<div class="field ${f.full?"full":""}"><label for="${id}">${esc(f.label)}${f.required?" *":""}</label>${input}<span class="err" data-err="${f.k}"></span></div>`;
+  }).join("")+`</div>`;
+}
+function readForm(d,fields){
+  const out={};let ok=true;
+  fields.forEach(f=>{
+    const el=d.querySelector("#f_"+f.k);let v=el.value.trim();
+    if(f.type==="number"&&v!=="") v=Number(v);
+    const errEl=d.querySelector(`[data-err="${f.k}"]`);let msg="";
+    if(f.required&&(v===""||v==null)) msg="Required.";
+    else if(f.pattern&&v!==""&&!new RegExp(f.pattern).test(v)) msg=f.patternMsg||"Check the format.";
+    errEl.textContent=msg;if(msg)ok=false;out[f.k]=v;
+  });
+  return ok?out:null;
+}
+
+/* ---------- CRUD table ---------- */
+function crud(el,cfg){
+  const st={q:"",sort:null,dir:1,filters:{}};
+  const root=typeof el==="string"?document.querySelector(el):el;
+  const filtersHTML=(cfg.filters||[]).map(f=>{
+    const o=typeof f.options==="function"?f.options():f.options;
+    return `<select data-f="${f.k}" aria-label="${esc(f.label)}"><option value="">All ${esc(f.label.toLowerCase())}</option>${opts(o)}</select>`;
+  }).join("");
+  root.innerHTML=`<div class="panel">
+    ${cfg.title?`<div class="panel-head"><h2>${esc(cfg.title)}</h2><span class="spacer"></span>${cfg.headExtra||""}</div>`:""}
+    <div class="toolbar"><input type="search" placeholder="${esc(cfg.searchPlaceholder||"Search")}" aria-label="Search">${filtersHTML}
+      ${cfg.readOnly?"":`<button class="btn primary" data-add>+ ${esc(cfg.addLabel||"Add")}</button>`}</div>
+    <div class="table-wrap"><table class="dt"><thead></thead><tbody></tbody></table></div>
+    <div class="foot"><span data-count></span><span>${esc(cfg.footNote||"")}</span></div></div>`;
+  const thead=root.querySelector("thead"),tbody=root.querySelector("tbody");
+  thead.innerHTML="<tr>"+cfg.columns.map((c,i)=>`<th data-i="${i}" ${c.num?'style="text-align:right"':""}>${esc(c.label)}</th>`).join("")+(cfg.readOnly&&!cfg.rowActions?"":'<th class="noclick"></th>')+"</tr>";
+  root.querySelector("input[type=search]").oninput=e=>{st.q=e.target.value.toLowerCase();render();};
+  root.querySelectorAll("[data-f]").forEach(s=>s.onchange=()=>{st.filters[s.dataset.f]=s.value;render();});
+  thead.querySelectorAll("th[data-i]").forEach(th=>th.onclick=()=>{const c=cfg.columns[th.dataset.i];st.dir=st.sort===c.k?-st.dir:1;st.sort=c.k;render();});
+  const add=root.querySelector("[data-add]");if(add)add.onclick=()=>edit(null);
+
+  function rows(){
+    let r=db.get(cfg.key);
+    if(cfg.where) r=r.filter(cfg.where);
+    Object.entries(st.filters).forEach(([k,v])=>{if(v)r=r.filter(x=>String(x[k])===v);});
+    if(st.q) r=r.filter(x=>cfg.columns.some(c=>String(c.text?c.text(x):x[c.k]??"").toLowerCase().includes(st.q)));
+    if(st.sort) r=[...r].sort((a,b)=>{const x=a[st.sort],y=b[st.sort];return (typeof x==="number"&&typeof y==="number"?x-y:String(x??"").localeCompare(String(y??"")))*st.dir;});
+    return r;
+  }
+  function render(){
+    const r=rows();
+    tbody.innerHTML=r.length?r.map(x=>`<tr>${cfg.columns.map(c=>`<td class="${c.num?"num":""}">${c.fmt?c.fmt(x[c.k],x):esc(x[c.k])}</td>`).join("")}
+      ${cfg.readOnly&&!cfg.rowActions?"":`<td class="act">${cfg.rowActions?cfg.rowActions(x):""}${cfg.readOnly?"":`<button class="btn sm link" data-e="${esc(x.id)}">Edit</button><button class="btn sm link danger" data-d="${esc(x.id)}">Delete</button>`}</td>`}</tr>`).join("")
+      :`<tr><td colspan="${cfg.columns.length+1}" class="empty">${esc(cfg.empty||"No records match.")}</td></tr>`;
+    root.querySelector("[data-count]").textContent=`${r.length} of ${db.get(cfg.key).length} records`;
+    tbody.querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>edit(b.dataset.e));
+    tbody.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>del(b.dataset.d));
+    if(cfg.afterRender) cfg.afterRender(tbody,api);
+  }
+  function edit(id){
+    const rec=id?db.find(cfg.key,id):{};
+    modal({title:(id?"Edit ":"New ")+(cfg.noun||"record"),body:formHTML(cfg.fields,rec),buttons:[{label:id?"Save changes":"Create",cls:"primary",onClick:d=>{
+      let v=readForm(d,cfg.fields);if(!v)return false;
+      if(cfg.validate){const m=cfg.validate(v,rec);if(m){toast(m);return false;}}
+      const list=db.get(cfg.key);
+      if(id){Object.assign(rec,v);}else{v.id=uid(cfg.idPrefix||"R",cfg.key);if(cfg.defaults)Object.assign(v,cfg.defaults(v));list.unshift(v);}
+      db.set(cfg.key,list);render();toast(id?"Saved":`${cfg.noun||"Record"} ${v.id||""} created`);cfg.onChange&&cfg.onChange();
+    }}]});
+  }
+  async function del(id){
+    if(!await confirmBox(`Delete ${cfg.noun||"record"}?`,`This removes ${id} from this browser's data.`))return;
+    db.set(cfg.key,db.get(cfg.key).filter(r=>r.id!==id));render();toast("Deleted");cfg.onChange&&cfg.onChange();
+  }
+  const api={render,edit};render();return api;
+}
+
+/* ---------- KPIs, bars, charts ---------- */
+function kpis(el,items){
+  (typeof el==="string"?document.querySelector(el):el).innerHTML=`<div class="kpis">`+items.map(k=>`<div class="kpi"><div class="l">${esc(k.l)}</div><div class="n">${k.n}</div>${k.d?`<div class="d ${k.t||""}">${esc(k.d)}</div>`:""}</div>`).join("")+`</div>`;
+}
+/* Vertical bar chart. data:[{label, values:[...]}], series:[{name,color}] */
+function barChart(el,{data,series,height=200}){
+  const W=600,H=height,pl=34,pb=22,pt=10,pr=6;
+  const max=Math.max(1,...data.map(d=>d.values.reduce((a,b)=>a+b,0)));
+  const nice=Math.ceil(max/5)*5||5;
+  const bw=(W-pl-pr)/data.length,inner=Math.max(6,bw*0.6);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for(let i=0;i<=4;i++){const y=pt+(H-pt-pb)*(1-i/4);s+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl-6}" y="${y+3}" text-anchor="end">${Math.round(nice*i/4)}</text>`;}
+  data.forEach((d,i)=>{
+    let y=H-pb;const x=pl+i*bw+(bw-inner)/2;
+    d.values.forEach((v,j)=>{const h=(H-pt-pb)*v/nice;y-=h;s+=`<rect x="${x}" y="${y}" width="${inner}" height="${Math.max(0,h)}" fill="${series[j].color}" rx="2"><title>${esc(d.label)} · ${esc(series[j].name)}: ${v}</title></rect>`;});
+    s+=`<text x="${x+inner/2}" y="${H-6}" text-anchor="middle">${esc(d.label)}</text>`;
+  });
+  s+=`</svg>`;
+  const legend=series.length>1?`<div class="legend">${series.map(x=>`<span><i style="background:${x.color}"></i>${esc(x.name)}</span>`).join("")}</div>`:"";
+  (typeof el==="string"?document.querySelector(el):el).innerHTML=`<div class="chart" style="padding:1rem 1rem .4rem">${s}</div>${legend}`;
+}
+function hbars(el,items,{fmt=num}={}){
+  const max=Math.max(1,...items.map(i=>i.v));
+  (typeof el==="string"?document.querySelector(el):el).innerHTML=`<ul class="list">`+items.map(i=>`<li><div class="grow"><div style="display:flex;justify-content:space-between;gap:.5rem"><span>${esc(i.l)}</span><span class="mono">${fmt(i.v)}</span></div><div class="bar ${i.tone||""}" style="margin-top:.35rem"><i style="width:${(i.v/max*100).toFixed(1)}%"></i></div></div></li>`).join("")+`</ul>`;
+}
+function tabs(el,names,onSel){
+  const root=typeof el==="string"?document.querySelector(el):el;
+  root.innerHTML=`<div class="tabs" role="tablist">${names.map((n,i)=>`<button role="tab" aria-selected="${i===0}" data-t="${i}">${esc(n)}</button>`).join("")}</div>`;
+  root.querySelectorAll("button").forEach(b=>b.onclick=()=>{root.querySelectorAll("button").forEach(x=>x.setAttribute("aria-selected",x===b));onSel(+b.dataset.t);});
+  onSel(0);
+}
+
+/* ---------- Lookups ---------- */
+const lookup={
+  patient:id=>db.find("patients",id)?.name||id,
+  staff:id=>db.find("staff",id)?.name||id,
+  dept:id=>db.find("departments",id)?.name||id,
+  med:id=>db.find("medicines",id)?.name||id,
+  doctors:()=>db.get("staff").filter(s=>s.role==="Doctor"&&s.status==="Active").map(s=>({value:s.id,label:`${s.name} · ${lookup.dept(s.dept)}`})),
+  depts:()=>db.get("departments").map(d=>({value:d.id,label:d.name})),
+  patients:()=>db.get("patients").map(p=>({value:p.id,label:`${p.name} · ${p.id}`})),
+  meds:()=>db.get("medicines").map(m=>({value:m.id,label:m.name})),
+  stock:medId=>db.get("batches").filter(b=>b.med===medId&&b.expiry>=today()).reduce((a,b)=>a+Number(b.qty||0),0),
+};
+
+/* ---------- Shell ---------- */
+function shell(){
+  const file=location.pathname.split("/").pop()||"dashboard.html";
+  const page=PAGES.find(p=>p.file===file)||PAGES[0];
+  document.title=`${page.title} · JAC Hospital Portal`;
+  const content=document.getElementById("content");
+  const groups=[...new Set(PAGES.map(p=>p.group))];
+  const app=document.createElement("div");app.className="app";
+  app.innerHTML=`<aside class="side" id="side">
+      <a class="brand" href="dashboard.html"><svg width="34" height="34" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="19.5" fill="none" stroke="#d6a35c" stroke-width="1.5"/><path d="M17 9h8v8h8v8h-8v8h-8v-8H9v-8h8z" fill="#5cc0aa"/></svg>
+        <span><b>JAC Portal</b><small>HOSPITAL &amp; COLLEGE</small></span></a>
+      <nav aria-label="Portal">${groups.map(g=>`<div class="group">${esc(g)}</div>`+PAGES.filter(p=>p.group===g).map(p=>`<a href="${p.file}" ${p===page?'aria-current="page"':""}><span class="no">${p.no}</span>${esc(p.title)}</a>`).join("")).join("")}
+        <div class="group">Data</div><a href="#" id="resetData"><span class="no">↺</span>Reset sample data</a>
+        <a href="../index.html"><span class="no">↗</span>Public website</a></nav>
+    </aside>
+    <div class="main"><header class="top">
+      <button class="btn sm menu-btn" id="menuBtn" aria-controls="side" aria-expanded="false">☰</button>
+      <div><div class="crumb">${page.no} · ${esc(page.group)}</div><h1>${esc(page.title)}</h1></div>
+      <span class="spacer"></span>
+      <span class="who"><span class="muted mono" id="clock"></span><span class="av">RA</span><span>Records Admin</span></span>
+    </header></div>`;
+  app.querySelector(".main").appendChild(content);
+  content.classList.add("content");
+  document.body.prepend(app);
+  const side=app.querySelector("#side"),mb=app.querySelector("#menuBtn");
+  mb.onclick=()=>{const o=side.classList.toggle("open");mb.setAttribute("aria-expanded",o);};
+  app.querySelector("#resetData").onclick=async e=>{e.preventDefault();if(await confirmBox("Reset sample data?","All changes made in this browser will be replaced with the original sample data.","Reset")){db.reset();location.reload();}};
+  const clock=app.querySelector("#clock");
+  const tick=()=>clock.textContent=new Date().toLocaleString("en-IN",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+  tick();setInterval(tick,30000);
+}
+
+window.Portal={PAGES,db,esc,isoLocal,today,addDays,fmtDate,inr,num,daysBetween,uid,pill,toast,opts,modal,confirmBox,formHTML,readForm,crud,kpis,barChart,hbars,tabs,lookup,shell};
+document.addEventListener("DOMContentLoaded",shell);
+})();

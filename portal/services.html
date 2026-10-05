@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Medical Services · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,tabs,toast,lookup,today,fmtDate,inr}=Portal;
+const T=today();
+const CATS=["Consultation","Laboratory","Radiology","Procedure"];
+const svc=id=>db.find("services",id);
+function refreshKpis(){
+  const s=db.get("services"),o=db.get("orders");
+  kpis("#kpis",[
+    ...CATS.map(c=>({l:c,n:s.filter(x=>x.category===c&&x.status==="Active").length,d:"active services"})),
+    {l:"Orders pending",n:o.filter(x=>x.status!=="Completed").length,d:`${o.filter(x=>x.priority==="Urgent"&&x.status!=="Completed").length} urgent`,t:o.some(x=>x.priority==="Urgent"&&x.status!=="Completed")?"down":""},
+    {l:"Billed today",n:inr(o.filter(x=>x.date===T).reduce((a,x)=>a+(svc(x.service)?.price||0),0))},
+  ]);
+}
+refreshKpis();
+const pane=document.getElementById("pane");
+
+function catalogue(){
+  crud(pane,{key:"services",idPrefix:"SRV",noun:"service",addLabel:"Add service",searchPlaceholder:"Search services",onChange:refreshKpis,
+    filters:[{k:"category",label:"Categories",options:CATS},{k:"dept",label:"Departments",options:lookup.depts},{k:"status",label:"Statuses",options:["Active","Inactive"]}],
+    columns:[{k:"id",label:"Code",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"name",label:"Service",fmt:v=>`<b>${esc(v)}</b>`},
+      {k:"category",label:"Category",fmt:v=>`<span class="pill">${esc(v)}</span>`},{k:"dept",label:"Department",fmt:v=>esc(lookup.dept(v)),text:r=>lookup.dept(r.dept)},
+      {k:"tat",label:"Turnaround",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"price",label:"Price",num:true,fmt:v=>inr(v)},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Service name",required:true,full:true},{k:"category",label:"Category",type:"select",required:true,options:CATS},
+      {k:"dept",label:"Department",type:"select",required:true,options:lookup.depts},{k:"price",label:"Price (₹)",type:"number",required:true},
+      {k:"tat",label:"Turnaround time",required:true},{k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}],
+    validate:v=>v.price<0?"Price can't be negative.":"",
+  });
+}
+
+function orders(){
+  const NEXT={"Pending":"In Progress","In Progress":"Completed"};
+  const t=crud(pane,{key:"orders",idPrefix:"ORD",noun:"service order",addLabel:"New order",searchPlaceholder:"Search patient, service or order",onChange:refreshKpis,
+    filters:[{k:"status",label:"Statuses",options:["Pending","In Progress","Completed"]},{k:"priority",label:"Priorities",options:["Routine","Urgent"]}],
+    columns:[{k:"id",label:"Order",fmt:(v,r)=>`<span class="mono">${esc(v)}</span><div class="muted" style="font-size:.72rem">${fmtDate(r.date)}</div>`},
+      {k:"patient",label:"Patient",fmt:v=>`<b>${esc(lookup.patient(v))}</b><div class="muted mono" style="font-size:.72rem">${esc(v)}</div>`,text:r=>lookup.patient(r.patient)},
+      {k:"service",label:"Service",fmt:v=>`${esc(svc(v)?.name||v)}<div class="muted" style="font-size:.72rem">${esc(svc(v)?.category||"")}</div>`,text:r=>svc(r.service)?.name},
+      {k:"doctor",label:"Ordered by",fmt:v=>esc(lookup.staff(v)),text:r=>lookup.staff(r.doctor)},
+      {k:"priority",label:"Priority",fmt:v=>v==="Urgent"?`<span class="pill alert">Urgent</span>`:`<span class="pill">Routine</span>`},
+      {k:"service",label:"Amount",num:true,fmt:v=>inr(svc(v)?.price)},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"patient",label:"Patient",type:"select",required:true,options:lookup.patients},
+      {k:"service",label:"Service",type:"select",required:true,options:()=>db.get("services").filter(s=>s.status==="Active"&&s.category!=="Consultation").map(s=>({value:s.id,label:`${s.name} · ${inr(s.price)}`}))},
+      {k:"doctor",label:"Ordering doctor",type:"select",required:true,options:lookup.doctors},{k:"priority",label:"Priority",type:"select",required:true,options:["Routine","Urgent"]},
+      {k:"date",label:"Date",type:"date",required:true,default:T},{k:"status",label:"Status",type:"select",required:true,options:["Pending","In Progress","Completed"],default:"Pending"}],
+    rowActions:r=>NEXT[r.status]?`<button class="btn sm link" data-n="${r.id}">${r.status==="Pending"?"Start":"Complete"}</button>`:"",
+    afterRender:tb=>tb.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>{const l=db.get("orders"),o=l.find(x=>x.id===b.dataset.n);o.status=NEXT[o.status];db.set("orders",l);t.render();refreshKpis();toast(`${o.id} → ${o.status}`);}),
+  });
+}
+
+function pricing(){
+  const s=db.get("services").filter(x=>x.status==="Active");
+  pane.innerHTML=`<div class="panel-body grid-2">`+CATS.map(c=>{const r=s.filter(x=>x.category===c).sort((a,b)=>a.price-b.price);
+    return `<div class="panel"><div class="panel-head"><h2>${c}</h2><span class="spacer"></span><span class="muted mono">${r.length} items</span></div>
+      <ul class="list">${r.map(x=>`<li><div class="grow">${esc(x.name)}<div class="sub">${esc(lookup.dept(x.dept))} · ${esc(x.tat)}</div></div><b class="mono">${inr(x.price)}</b></li>`).join("")||'<li class="empty">No active services.</li>'}</ul></div>`;}).join("")+`</div>`;
+}
+
+tabs("#tabs",["Service catalogue","Service orders","Price list"],i=>[catalogue,orders,pricing][i]());
+</script>
+</body>
+</html>

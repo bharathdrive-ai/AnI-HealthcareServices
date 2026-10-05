@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Appointment Booking · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="grid-2" style="grid-template-columns:minmax(0,5fr) minmax(0,7fr)">
+    <div class="panel">
+      <div class="panel-head"><h2>Book an appointment</h2></div>
+      <div class="panel-body" style="display:grid;gap:.9rem">
+        <div class="form-grid">
+          <div class="field"><label for="bDept">Department</label><select id="bDept"></select></div>
+          <div class="field"><label for="bDoc">Doctor</label><select id="bDoc"></select></div>
+          <div class="field"><label for="bDate">Date</label><input id="bDate" type="date"></div>
+          <div class="field"><label for="bType">Visit type</label><select id="bType"><option>New</option><option>Follow-up</option></select></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;margin-bottom:.45rem"><label>Available slots</label><span class="muted" style="font-size:.75rem" id="availNote"></span></div>
+          <div class="slots" id="slots"></div>
+        </div>
+        <div class="form-grid">
+          <div class="field full"><label for="bPatient">Patient</label>
+            <div style="display:flex;gap:.5rem"><select id="bPatient"></select><button class="btn" type="button" id="newPat">New</button></div></div>
+          <div class="field full"><label for="bReason">Reason for visit</label><input id="bReason" placeholder="e.g. chest pain review"></div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap"><button class="btn primary" id="bookBtn">Book appointment</button><span class="err" id="bookErr"></span></div>
+      </div>
+    </div>
+    <div id="list"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,toast,opts,lookup,today,addDays,fmtDate,modal,formHTML,readForm,uid}=Portal;
+const T=today();
+const SLOTS=[];for(let m=9*60;m<13*60;m+=15)SLOTS.push(`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`);
+const $=id=>document.getElementById(id);
+let chosen=null;
+
+function refreshKpis(){
+  const a=db.get("appointments"),t=a.filter(x=>x.date===T);
+  kpis("#kpis",[
+    {l:"Today",n:t.length,d:`${t.filter(x=>x.status==="Completed").length} completed`},
+    {l:"Waiting",n:t.filter(x=>["Booked","Checked In"].includes(x.status)).length,d:"Booked or checked in"},
+    {l:"In consultation",n:t.filter(x=>x.status==="In Consultation").length},
+    {l:"Upcoming 7 days",n:a.filter(x=>x.date>T&&x.date<=addDays(T,7)&&x.status==="Booked").length},
+    {l:"No-show rate (30 d)",n:(()=>{const p=a.filter(x=>x.date<T&&x.date>=addDays(T,-30));return p.length?Math.round(p.filter(x=>x.status==="No Show").length/p.length*100)+"%":"—";})()},
+  ]);
+}
+
+function availability(doc,date){
+  if(!doc||!date) return {ok:false,msg:"Choose a doctor and date."};
+  if(date<T) return {ok:false,msg:"Pick today or a later date."};
+  if(new Date(date+"T00:00").getDay()===0) return {ok:false,msg:"OPD is closed on Sundays."};
+  const d=db.find("staff",doc);
+  const hol=db.get("holidays").find(h=>h.status==="Active"&&h.date===date&&(h.scope==="Hospital"||(h.scope==="Department"&&h.dept===d.dept)));
+  if(hol) return {ok:false,msg:`Holiday: ${hol.name}.`};
+  const lv=db.get("leaves").find(l=>l.staff===doc&&l.status==="Approved"&&l.from<=date&&l.to>=date);
+  if(lv) return {ok:false,msg:`${d.name} is on ${lv.type.toLowerCase()}.`};
+  return {ok:true};
+}
+function drawSlots(){
+  const doc=$("bDoc").value,date=$("bDate").value,av=availability(doc,date);
+  chosen=null;
+  if(!av.ok){$("slots").innerHTML=`<p class="muted" style="grid-column:1/-1;margin:0">${esc(av.msg)}</p>`;$("availNote").textContent="";return;}
+  const taken=db.get("appointments").filter(a=>a.doctor===doc&&a.date===date&&a.status!=="Cancelled").map(a=>a.slot);
+  const now=new Date(),nowM=now.getHours()*60+now.getMinutes();
+  $("slots").innerHTML=SLOTS.map(s=>{const [h,m]=s.split(":").map(Number);const past=date===T&&h*60+m<=nowM;const dis=taken.includes(s)||past;return `<button type="button" class="slot" data-s="${s}" ${dis?"disabled":""} aria-pressed="false">${s}</button>`;}).join("");
+  $("availNote").textContent=`${SLOTS.length-$("slots").querySelectorAll(".slot:disabled").length} of ${SLOTS.length} free`;
+  $("slots").querySelectorAll(".slot:not(:disabled)").forEach(b=>b.onclick=()=>{$("slots").querySelectorAll(".slot").forEach(x=>x.setAttribute("aria-pressed",x===b));chosen=b.dataset.s;});
+}
+function fillDocs(){
+  const dept=$("bDept").value;
+  $("bDoc").innerHTML=opts(lookup.doctors().filter(d=>db.find("staff",d.value).dept===dept));
+  if(!$("bDoc").options.length) $("bDoc").innerHTML=`<option value="">No doctors in this department</option>`;
+  drawSlots();
+}
+function fillPatients(sel){$("bPatient").innerHTML=`<option value="">Choose a patient</option>`+opts(lookup.patients(),sel);}
+
+$("bDept").innerHTML=opts(lookup.depts().filter(d=>lookup.doctors().some(x=>db.find("staff",x.value).dept===d.value)));
+$("bDate").min=T;$("bDate").value=addDays(T,new Date().getHours()>=12?1:0);
+fillPatients();fillDocs();
+$("bDept").onchange=fillDocs;$("bDoc").onchange=drawSlots;$("bDate").onchange=drawSlots;
+
+$("newPat").onclick=()=>{
+  const F=[{k:"name",label:"Full name",required:true},{k:"phone",label:"Mobile",required:true,pattern:"^[6-9]\\d{9}$",patternMsg:"10-digit mobile number."},
+    {k:"gender",label:"Gender",type:"select",required:true,options:["Male","Female","Other"]},{k:"dob",label:"Date of birth",type:"date",required:true}];
+  modal({title:"Quick registration",body:formHTML(F),buttons:[{label:"Register",cls:"primary",onClick:d=>{
+    const v=readForm(d,F);if(!v)return false;
+    const list=db.get("patients");const max=Math.max(...list.map(p=>+p.id.replace("UHID","")));
+    Object.assign(v,{id:"UHID"+(max+1),blood:"",city:"",history:"",type:"OPD",status:"Active",registered:T,insurance:"None"});
+    list.unshift(v);db.set("patients",list);fillPatients(v.id);toast(`Registered ${v.name} · ${v.id}`);
+  }}]});
+};
+
+$("bookBtn").onclick=()=>{
+  const p=$("bPatient").value,doc=$("bDoc").value,date=$("bDate").value,err=$("bookErr");
+  if(!p){err.textContent="Choose a patient.";return;}
+  if(!availability(doc,date).ok){err.textContent="That doctor isn't available on this date.";return;}
+  if(!chosen){err.textContent="Pick a time slot.";return;}
+  err.textContent="";
+  const list=db.get("appointments");
+  const rec={id:uid("APT","appointments"),patient:p,doctor:doc,dept:db.find("staff",doc).dept,date,slot:chosen,type:$("bType").value,status:"Booked",reason:$("bReason").value.trim()};
+  list.unshift(rec);db.set("appointments",list);
+  toast(`Booked ${rec.id}: ${lookup.patient(p)} at ${chosen}, ${fmtDate(date)}`);
+  $("bReason").value="";drawSlots();table.render();refreshKpis();
+};
+
+const NEXT={"Booked":["Checked In","Cancelled","No Show"],"Checked In":["In Consultation","Cancelled"],"In Consultation":["Completed"]};
+const table=crud("#list",{key:"appointments",idPrefix:"APT",noun:"appointment",title:"Appointments",readOnly:true,searchPlaceholder:"Search patient, doctor or ID",
+  filters:[{k:"date",label:"Dates",options:()=>[...new Set(db.get("appointments").map(a=>a.date))].sort().map(d=>({value:d,label:fmtDate(d)+(d===T?" (today)":"")}))},{k:"status",label:"Statuses",options:["Booked","Checked In","In Consultation","Completed","Cancelled","No Show"]}],
+  columns:[{k:"slot",label:"Time",fmt:(v,r)=>`<span class="mono">${esc(v)}</span><div class="muted" style="font-size:.72rem">${fmtDate(r.date)}</div>`},
+    {k:"patient",label:"Patient",fmt:(v,r)=>`<b>${esc(lookup.patient(v))}</b><div class="muted mono" style="font-size:.72rem">${esc(v)} · ${esc(r.type)}</div>`,text:r=>lookup.patient(r.patient)+" "+r.patient},
+    {k:"doctor",label:"Doctor",fmt:(v,r)=>`${esc(lookup.staff(v))}<div class="muted" style="font-size:.72rem">${esc(lookup.dept(r.dept))}</div>`,text:r=>lookup.staff(r.doctor)+" "+r.id},
+    {k:"status",label:"Status",fmt:pill}],
+  rowActions:r=>(NEXT[r.status]||[]).map(s=>`<button class="btn sm link" data-st="${s}" data-id="${r.id}">${s==="Checked In"?"Check in":s==="In Consultation"?"Start":s==="Completed"?"Complete":s==="No Show"?"No show":"Cancel"}</button>`).join(""),
+  afterRender:tb=>tb.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{
+    const list=db.get("appointments"),a=list.find(x=>x.id===b.dataset.id);a.status=b.dataset.st;db.set("appointments",list);table.render();refreshKpis();drawSlots();toast(`${a.id} → ${a.status}`);
+  }),
+});
+document.querySelector('#list [data-f="date"]').value=T;document.querySelector('#list [data-f="date"]').dispatchEvent(new Event("change"));
+refreshKpis();
+</script>
+</body>
+</html>

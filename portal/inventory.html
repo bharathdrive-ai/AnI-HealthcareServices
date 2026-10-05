@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Medicine &amp; Inventory · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,tabs,lookup,today,addDays,fmtDate,inr,num,daysBetween}=Portal;
+const T=today(),SOON=addDays(T,90);
+const FORMS=["Tablet","Capsule","Syrup","Injection","Inhaler","IV Fluid","Powder","Ointment","Drops"];
+const stockStatus=m=>{const q=lookup.stock(m.id);return q===0?"Out of stock":q<m.reorder?"Low stock":"In stock";};
+const expStatus=b=>b.expiry<T?"Expired":b.expiry<=SOON?"Near expiry":"In stock";
+const supName=id=>db.find("suppliers",id)?.name||id;
+
+function refreshKpis(){
+  const M=db.get("medicines"),B=db.get("batches").filter(b=>b.qty>0);
+  kpis("#kpis",[
+    {l:"Medicines",n:M.length,d:`${new Set(M.map(m=>m.category)).size} categories`},
+    {l:"Stock value",n:inr(Math.round(B.filter(b=>b.expiry>=T).reduce((a,b)=>a+b.qty*b.cost,0))),d:"At cost, usable batches"},
+    {l:"Low / out of stock",n:M.filter(m=>stockStatus(m)!=="In stock").length,t:M.some(m=>stockStatus(m)!=="In stock")?"down":""},
+    {l:"Near expiry (90 d)",n:B.filter(b=>b.expiry>=T&&b.expiry<=SOON).length,d:"batches"},
+    {l:"Expired on shelf",n:B.filter(b=>b.expiry<T).length,d:"batches to return or destroy",t:B.some(b=>b.expiry<T)?"down":""},
+    {l:"Suppliers",n:db.get("suppliers").filter(s=>s.status==="Active").length},
+  ]);
+}
+refreshKpis();
+const pane=document.getElementById("pane");
+
+function stock(){
+  crud(pane,{key:"medicines",readOnly:true,searchPlaceholder:"Search medicine or generic name",
+    filters:[{k:"category",label:"Categories",options:()=>[...new Set(db.get("medicines").map(m=>m.category))]},{k:"form",label:"Forms",options:FORMS}],
+    columns:[{k:"name",label:"Medicine",fmt:(v,r)=>`<b>${esc(v)}</b><div class="muted" style="font-size:.72rem">${esc(r.generic)} · ${esc(r.form)}</div>`},
+      {k:"category",label:"Category"},
+      {k:"id",label:"In stock",num:true,fmt:(v)=>num(lookup.stock(v)),text:r=>""},
+      {k:"reorder",label:"Reorder at",num:true},
+      {k:"id",label:"Level",fmt:(v,r)=>{const q=lookup.stock(v),p=Math.min(100,q/(r.reorder*2)*100);return `<div class="bar ${q<r.reorder?"alert":q<r.reorder*1.3?"warn":""}" style="width:110px"><i style="width:${p}%"></i></div>`;}},
+      {k:"id",label:"Nearest expiry",fmt:v=>{const b=db.get("batches").filter(x=>x.med===v&&x.qty>0&&x.expiry>=T).sort((a,b)=>a.expiry.localeCompare(b.expiry))[0];return b?`<span class="mono">${fmtDate(b.expiry)}</span>`:'<span class="muted">—</span>';}},
+      {k:"status",label:"Status",fmt:(v,r)=>pill(stockStatus(r)),text:r=>stockStatus(r)}],
+  });
+}
+
+function master(){
+  crud(pane,{key:"medicines",idPrefix:"MED",noun:"medicine",addLabel:"Add medicine",searchPlaceholder:"Search medicines",onChange:refreshKpis,
+    filters:[{k:"schedule",label:"Schedules",options:["OTC","H","H1","X"]},{k:"form",label:"Forms",options:FORMS}],
+    columns:[{k:"id",label:"Code",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"name",label:"Brand / name",fmt:v=>`<b>${esc(v)}</b>`},{k:"generic",label:"Generic"},
+      {k:"form",label:"Form"},{k:"category",label:"Category"},{k:"schedule",label:"Schedule",fmt:v=>v==="OTC"?`<span class="pill">OTC</span>`:`<span class="pill warn">Sch. ${esc(v)}</span>`},
+      {k:"mrp",label:"MRP / unit",num:true,fmt:v=>inr(v)},{k:"reorder",label:"Reorder level",num:true},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Brand / name",required:true},{k:"generic",label:"Generic name",required:true},{k:"form",label:"Dosage form",type:"select",required:true,options:FORMS},
+      {k:"category",label:"Therapeutic category",required:true},{k:"schedule",label:"Drug schedule",type:"select",required:true,options:["OTC","H","H1","X"]},
+      {k:"mrp",label:"MRP per unit (₹)",type:"number",step:"0.01",required:true},{k:"reorder",label:"Reorder level (units)",type:"number",required:true},
+      {k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}],
+  });
+}
+
+function batches(){
+  crud(pane,{key:"batches",idPrefix:"BAT",noun:"batch",addLabel:"Receive stock",searchPlaceholder:"Search medicine or batch no.",onChange:refreshKpis,
+    filters:[{k:"med",label:"Medicines",options:lookup.meds},{k:"supplier",label:"Suppliers",options:()=>db.get("suppliers").map(s=>({value:s.id,label:s.name}))}],
+    columns:[{k:"batch",label:"Batch",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"med",label:"Medicine",fmt:v=>`<b>${esc(lookup.med(v))}</b>`,text:r=>lookup.med(r.med)},
+      {k:"supplier",label:"Supplier",fmt:v=>esc(supName(v)),text:r=>supName(r.supplier)},{k:"received",label:"Received",fmt:v=>`<span class="mono">${fmtDate(v)}</span>`},
+      {k:"expiry",label:"Expiry",fmt:v=>`<span class="mono">${fmtDate(v)}</span><div class="muted" style="font-size:.72rem">${v<T?`${daysBetween(v,T)} d ago`:`in ${daysBetween(T,v)} d`}</div>`},
+      {k:"qty",label:"Qty",num:true,fmt:v=>num(v)},{k:"cost",label:"Cost / unit",num:true,fmt:v=>inr(v)},{k:"expiry",label:"Status",fmt:(v,r)=>r.qty>0?pill(expStatus(r)):pill("Out of stock"),text:r=>expStatus(r)}],
+    fields:[{k:"med",label:"Medicine",type:"select",required:true,options:lookup.meds},{k:"batch",label:"Batch number",required:true},
+      {k:"supplier",label:"Supplier",type:"select",required:true,options:()=>db.get("suppliers").map(s=>({value:s.id,label:s.name}))},
+      {k:"qty",label:"Quantity (units)",type:"number",required:true},{k:"received",label:"Received on",type:"date",required:true,default:T},
+      {k:"expiry",label:"Expiry date",type:"date",required:true},{k:"cost",label:"Cost per unit (₹)",type:"number",step:"0.01",required:true}],
+    validate:v=>v.expiry<=v.received?"Expiry must be after the received date.":(v.qty<0?"Quantity can't be negative.":""),
+  });
+}
+
+function suppliers(){
+  crud(pane,{key:"suppliers",idPrefix:"SUP",noun:"supplier",addLabel:"Add supplier",searchPlaceholder:"Search suppliers",onChange:refreshKpis,
+    columns:[{k:"name",label:"Supplier",fmt:(v,r)=>`<b>${esc(v)}</b><div class="muted" style="font-size:.72rem">${esc(r.city)}</div>`},{k:"gstin",label:"GSTIN",fmt:v=>`<span class="mono">${esc(v)}</span>`},
+      {k:"contact",label:"Contact"},{k:"phone",label:"Phone",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"terms",label:"Credit (days)",num:true},
+      {k:"id",label:"Batches",num:true,fmt:v=>db.get("batches").filter(b=>b.supplier===v).length,text:()=>""},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Supplier name",required:true},{k:"city",label:"City",required:true},
+      {k:"gstin",label:"GSTIN",required:true,pattern:"^\\d{2}[A-Z]{5}\\d{4}[A-Z][A-Z\\d]Z[A-Z\\d]$",patternMsg:"15-character GSTIN, e.g. 29AAACM1234F1Z5."},
+      {k:"contact",label:"Contact person"},{k:"phone",label:"Phone",required:true},{k:"terms",label:"Credit terms (days)",type:"number"},
+      {k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}],
+  });
+}
+
+tabs("#tabs",["Stock levels","Medicine master","Batches & expiry","Suppliers"],i=>[stock,master,batches,suppliers][i]());
+</script>
+</body>
+</html>

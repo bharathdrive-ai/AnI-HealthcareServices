@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pharmacy · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,tabs,toast,modal,opts,lookup,today,fmtDate,inr,num,uid}=Portal;
+const T=today();
+const med=id=>db.find("medicines",id);
+const PHARMACIST="STF0018";
+
+function refreshKpis(){
+  const R=db.get("prescriptions"),D=db.get("dispenses");
+  kpis("#kpis",[
+    {l:"Prescriptions waiting",n:R.filter(r=>r.status==="Pending").length},
+    {l:"Partly dispensed",n:R.filter(r=>r.status==="Partial").length},
+    {l:"Dispensed today",n:D.filter(d=>d.date===T).length,d:`${D.filter(d=>d.date===T).reduce((a,d)=>a+d.items,0)} line items`},
+    {l:"Sales today",n:inr(D.filter(d=>d.date===T).reduce((a,d)=>a+d.amount,0))},
+    {l:"Returns pending",n:db.get("returns").filter(r=>r.status==="Pending").length},
+  ]);
+}
+refreshKpis();
+const pane=document.getElementById("pane");
+
+/* Deduct qty from usable batches, first-expiry-first-out. Returns units actually deducted. */
+function deduct(medId,qty){
+  const B=db.get("batches");let left=qty;
+  B.filter(b=>b.med===medId&&b.qty>0&&b.expiry>=T).sort((a,b)=>a.expiry.localeCompare(b.expiry)).forEach(b=>{const take=Math.min(b.qty,left);b.qty-=take;left-=take;});
+  db.set("batches",B);return qty-left;
+}
+
+function dispense(rxId){
+  const R=db.get("prescriptions"),rx=R.find(r=>r.id===rxId);
+  const rows=rx.items.map((it,i)=>{const due=it.qty-(it.given||0),stock=lookup.stock(it.med);return {...it,i,due,stock,give:Math.min(due,stock)};});
+  const d=modal({title:`Dispense ${rx.id} · ${lookup.patient(rx.patient)}`,wide:true,body:`
+    <p class="muted" style="margin:0 0 .8rem">Prescribed by ${esc(lookup.staff(rx.doctor))} on ${fmtDate(rx.date)}. Stock is taken from the batch that expires first.</p>
+    <div class="table-wrap"><table class="dt"><thead><tr><th class="noclick">Medicine</th><th class="noclick">Dose</th><th class="noclick" style="text-align:right">Due</th><th class="noclick" style="text-align:right">In stock</th><th class="noclick" style="text-align:right">Give now</th><th class="noclick" style="text-align:right">Amount</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td><b>${esc(lookup.med(r.med))}</b>${med(r.med)?.schedule!=="OTC"?' <span class="pill warn">Rx only</span>':""}</td><td class="mono">${esc(r.dose)} × ${r.days} d</td><td class="num">${r.due}</td><td class="num ${r.stock<r.due?"":""}" style="${r.stock<r.due?"color:var(--alert)":""}">${num(r.stock)}</td>
+      <td class="num"><input type="number" min="0" max="${Math.min(r.due,r.stock)}" value="${r.give}" data-i="${r.i}" style="width:5.5rem;text-align:right" aria-label="Quantity to give"></td><td class="num" data-amt="${r.i}"></td></tr>`).join("")}</tbody>
+    <tfoot><tr><td colspan="5" style="text-align:right;font-weight:600">Total</td><td class="num"><b id="dTot"></b></td></tr></tfoot></table></div>`,
+    buttons:[{label:"Dispense",cls:"primary",onClick:dlg=>{
+      let lines=0,amount=0;
+      dlg.querySelectorAll("input[data-i]").forEach(inp=>{
+        const r=rows[+inp.dataset.i],q=Math.max(0,Math.min(+inp.value||0,r.due,r.stock));
+        if(!q)return;const got=deduct(r.med,q);rx.items[r.i].given=(rx.items[r.i].given||0)+got;lines++;amount+=got*(med(r.med)?.mrp||0);
+      });
+      if(!lines){toast("Nothing to dispense. Enter a quantity.");return false;}
+      rx.status=rx.items.every(it=>(it.given||0)>=it.qty)?"Dispensed":"Partial";db.set("prescriptions",R);
+      const D=db.get("dispenses");D.unshift({id:uid("DSP","dispenses"),rx:rx.id,patient:rx.patient,date:T,items:lines,amount:Math.round(amount*100)/100,by:PHARMACIST,status:rx.status});db.set("dispenses",D);
+      toast(`${rx.id} ${rx.status.toLowerCase()} · ${inr(amount)}`);refreshKpis();queue();
+    }}]});
+  const tot=()=>{let s=0;d.querySelectorAll("input[data-i]").forEach(inp=>{const r=rows[+inp.dataset.i],a=(+inp.value||0)*(med(r.med)?.mrp||0);s+=a;d.querySelector(`[data-amt="${r.i}"]`).textContent=inr(a.toFixed(2));});d.querySelector("#dTot").textContent=inr(s.toFixed(2));};
+  d.querySelectorAll("input[data-i]").forEach(i=>i.oninput=tot);tot();
+}
+
+function newRx(){
+  const line=()=>`<div class="form-grid rxline" style="grid-template-columns:2fr 1fr .7fr .7fr auto;align-items:end;margin-top:.6rem">
+    <div class="field"><label>Medicine</label><select class="m">${opts(lookup.meds())}</select></div>
+    <div class="field"><label>Dose</label><input class="d" value="1-0-1"></div><div class="field"><label>Days</label><input class="n" type="number" value="5"></div>
+    <div class="field"><label>Qty</label><input class="q" type="number" value="10"></div><button type="button" class="btn sm danger rm" aria-label="Remove line">✕</button></div>`;
+  const d=modal({title:"New prescription",wide:true,body:`<div class="form-grid"><div class="field"><label for="rxP">Patient</label><select id="rxP">${opts(lookup.patients())}</select></div>
+    <div class="field"><label for="rxD">Doctor</label><select id="rxD">${opts(lookup.doctors())}</select></div></div><div id="lines">${line()}</div>
+    <button type="button" class="btn sm" id="addLine" style="margin-top:.8rem">+ Add medicine</button>`,
+    buttons:[{label:"Save prescription",cls:"primary",onClick:dlg=>{
+      const items=[...dlg.querySelectorAll(".rxline")].map(l=>({med:l.querySelector(".m").value,dose:l.querySelector(".d").value.trim(),days:+l.querySelector(".n").value,qty:+l.querySelector(".q").value})).filter(i=>i.qty>0);
+      if(!items.length){toast("Add at least one medicine with a quantity.");return false;}
+      const R=db.get("prescriptions");const rx={id:uid("RX","prescriptions"),patient:dlg.querySelector("#rxP").value,doctor:dlg.querySelector("#rxD").value,date:T,status:"Pending",items};
+      R.unshift(rx);db.set("prescriptions",R);toast(`${rx.id} added to the queue`);refreshKpis();queue();
+    }}]});
+  const bind=()=>d.querySelectorAll(".rm").forEach(b=>b.onclick=()=>{if(d.querySelectorAll(".rxline").length>1)b.closest(".rxline").remove();});
+  d.querySelector("#addLine").onclick=()=>{d.querySelector("#lines").insertAdjacentHTML("beforeend",line());bind();};bind();
+}
+
+function queue(){
+  const R=db.get("prescriptions").filter(r=>r.status!=="Dispensed");
+  pane.innerHTML=`<div class="toolbar"><span class="muted">${R.length} prescriptions waiting</span><span style="flex:1"></span><button class="btn primary" id="newRx">+ New prescription</button></div>
+    <ul class="list">${R.map(r=>`<li style="align-items:flex-start"><span class="mono" style="width:4.5rem">${esc(r.id)}</span><div class="grow"><b>${esc(lookup.patient(r.patient))}</b> <span class="muted mono" style="font-size:.75rem">${esc(r.patient)}</span>
+      <div class="sub">${esc(lookup.staff(r.doctor))} · ${fmtDate(r.date)}</div>
+      <div style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.35rem">${r.items.map(i=>{const s=lookup.stock(i.med),due=i.qty-(i.given||0);return `<span class="pill ${due===0?"ok":s<due?"alert":""}">${esc(lookup.med(i.med))} · ${due===0?"given":due}</span>`;}).join("")}</div></div>
+      ${pill(r.status)}<button class="btn sm primary" data-rx="${r.id}">Dispense</button></li>`).join("")||'<li class="empty">No prescriptions waiting.</li>'}</ul>`;
+  pane.querySelector("#newRx").onclick=newRx;
+  pane.querySelectorAll("[data-rx]").forEach(b=>b.onclick=()=>dispense(b.dataset.rx));
+}
+
+function log(){
+  crud(pane,{key:"dispenses",readOnly:true,searchPlaceholder:"Search patient or prescription",
+    columns:[{k:"id",label:"Bill",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"date",label:"Date",fmt:v=>`<span class="mono">${fmtDate(v)}</span>`},{k:"rx",label:"Prescription",fmt:v=>`<span class="mono">${esc(v)}</span>`},
+      {k:"patient",label:"Patient",fmt:v=>esc(lookup.patient(v)),text:r=>lookup.patient(r.patient)},{k:"items",label:"Lines",num:true},{k:"amount",label:"Amount",num:true,fmt:v=>inr(v)},
+      {k:"by",label:"Pharmacist",fmt:v=>esc(lookup.staff(v))},{k:"status",label:"Status",fmt:pill}]});
+}
+
+function returns(){
+  const t=crud(pane,{key:"returns",idPrefix:"RET",noun:"return",addLabel:"Record return",searchPlaceholder:"Search returns",onChange:refreshKpis,
+    filters:[{k:"type",label:"Types",options:["Patient return","Return to supplier"]},{k:"status",label:"Statuses",options:["Pending","Approved","Rejected"]}],
+    columns:[{k:"id",label:"ID",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"date",label:"Date",fmt:v=>`<span class="mono">${fmtDate(v)}</span>`},{k:"type",label:"Type"},
+      {k:"med",label:"Medicine",fmt:v=>`<b>${esc(lookup.med(v))}</b>`,text:r=>lookup.med(r.med)},{k:"qty",label:"Qty",num:true},{k:"reason",label:"Reason",fmt:v=>`<span class="muted">${esc(v)}</span>`},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"type",label:"Return type",type:"select",required:true,options:["Patient return","Return to supplier"]},{k:"med",label:"Medicine",type:"select",required:true,options:lookup.meds},
+      {k:"qty",label:"Quantity",type:"number",required:true},{k:"date",label:"Date",type:"date",required:true,default:T},{k:"reason",label:"Reason",required:true,full:true}],
+    defaults:()=>({status:"Pending",batch:""}),
+    rowActions:r=>r.status==="Pending"?`<button class="btn sm link" data-ap="${r.id}">Approve</button>`:"",
+    afterRender:tb=>tb.querySelectorAll("[data-ap]").forEach(b=>b.onclick=()=>{
+      const L=db.get("returns"),r=L.find(x=>x.id===b.dataset.ap),B=db.get("batches");
+      if(r.type==="Patient return"){const bt=B.filter(x=>x.med===r.med&&x.expiry>=T).sort((a,b)=>b.expiry.localeCompare(a.expiry))[0];if(bt){bt.qty+=r.qty;db.set("batches",B);}}
+      else{let left=r.qty;B.filter(x=>x.med===r.med&&x.qty>0).sort((a,b)=>a.expiry.localeCompare(b.expiry)).forEach(x=>{const k=Math.min(x.qty,left);x.qty-=k;left-=k;});db.set("batches",B);}
+      r.status="Approved";db.set("returns",L);t.render();refreshKpis();toast(`${r.id} approved · stock ${r.type==="Patient return"?"added back":"removed"}`);
+    }),
+  });
+}
+
+tabs("#tabs",["Prescription queue","Dispensing log","Returns"],i=>[queue,log,returns][i]());
+</script>
+</body>
+</html>

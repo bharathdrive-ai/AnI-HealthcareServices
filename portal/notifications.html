@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notifications · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,tabs,toast,modal,today}=Portal;
+const T=today();
+const CH=["SMS","Email","App"];
+const SAMPLE={patient:"Ramesh Gowda",doctor:"Dr. Meera Iyer",date:"12 Oct",slot:"10:15",token:"C-14",test:"HbA1c",followup:"OPD in 7 days",medicine:"Ondansetron 4 mg",qty:"0",reorder:"60",count:"3",days:"90",leave_type:"casual leave",from:"8 Oct",to:"9 Oct",status:"approved",week:"6 Oct",shift:"Mon 08:00"};
+const tplName=id=>db.find("templates",id)?.name||id;
+const render=b=>String(b).replace(/\{(\w+)\}/g,(m,k)=>SAMPLE[k]??m);
+const smsParts=b=>{const n=render(b).length;return n<=160?1:Math.ceil(n/153);};
+
+function refreshKpis(){
+  const L=db.get("notifLog"),tp=db.get("templates");
+  kpis("#kpis",[
+    {l:"Templates",n:tp.length,d:CH.map(c=>`${tp.filter(t=>t.channel===c).length} ${c}`).join(" · ")},
+    {l:"Alert rules",n:db.get("rules").length,d:`${db.get("rules").filter(r=>r.status==="Enabled").length} enabled`},
+    {l:"Sent (last 3 days)",n:L.filter(l=>l.status==="Sent").length},
+    {l:"Failed",n:L.filter(l=>l.status==="Failed").length,t:L.some(l=>l.status==="Failed")?"down":""},
+  ]);
+}
+refreshKpis();
+const pane=document.getElementById("pane");
+
+function preview(id){
+  const t=db.find("templates",id);
+  modal({title:`Preview · ${t.name}`,body:`<p class="muted" style="margin:0 0 .6rem;font-size:.8rem">${esc(t.channel)} · placeholders filled with sample values</p>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:1rem;background:var(--surface-2);max-width:340px;white-space:pre-wrap">${esc(render(t.body))}</div>
+    ${t.channel==="SMS"?`<p class="muted mono" style="font-size:.75rem;margin-top:.6rem">${render(t.body).length} characters · ${smsParts(t.body)} SMS part${smsParts(t.body)>1?"s":""}</p>`:""}
+    <p class="muted" style="font-size:.75rem;margin-top:.8rem">Placeholders: ${(t.body.match(/\{\w+\}/g)||[]).map(p=>`<code class="mono">${esc(p)}</code>`).join(" ")||"none"}</p>`});
+}
+
+function templates(){
+  crud(pane,{key:"templates",idPrefix:"TPL",noun:"template",addLabel:"New template",searchPlaceholder:"Search templates",onChange:refreshKpis,
+    filters:[{k:"channel",label:"Channels",options:CH},{k:"category",label:"Categories",options:["Appointment","Laboratory","Patient","Inventory","Staff"]}],
+    columns:[{k:"name",label:"Template",fmt:(v,r)=>`<b>${esc(v)}</b><div class="muted" style="font-size:.72rem">${esc(r.category)} · ${esc(r.lang)}</div>`},
+      {k:"channel",label:"Channel",fmt:v=>`<span class="pill ${v==="SMS"?"info":v==="Email"?"":"ok"}">${esc(v)}</span>`},
+      {k:"body",label:"Message",fmt:v=>`<span class="muted" style="display:block;max-width:46ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(v)}</span>`},
+      {k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"name",label:"Template name",required:true},{k:"channel",label:"Channel",type:"select",required:true,options:CH},
+      {k:"category",label:"Category",type:"select",required:true,options:["Appointment","Laboratory","Patient","Inventory","Staff"]},
+      {k:"lang",label:"Language",type:"select",required:true,options:["English","Kannada","Hindi","Tamil","Telugu"],default:"English"},
+      {k:"body",label:"Message (use {placeholders})",type:"textarea",required:true,full:true},
+      {k:"status",label:"Status",type:"select",required:true,options:["Active","Draft"],default:"Draft"}],
+    validate:v=>v.channel==="SMS"&&smsParts(v.body)>2?"SMS is longer than 2 parts (306 characters). Shorten it.":"",
+    rowActions:r=>`<button class="btn sm link" data-p="${r.id}">Preview</button>`,
+    afterRender:tb=>tb.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>preview(b.dataset.p)),
+  });
+}
+
+function rules(){
+  const t=crud(pane,{key:"rules",idPrefix:"RUL",noun:"alert rule",addLabel:"New rule",searchPlaceholder:"Search rules",onChange:refreshKpis,
+    columns:[{k:"event",label:"When",fmt:v=>`<b>${esc(v)}</b>`},{k:"template",label:"Send template",fmt:v=>esc(tplName(v)),text:r=>tplName(r.template)},
+      {k:"template",label:"Channel",fmt:v=>esc(db.find("templates",v)?.channel||"")},{k:"recipients",label:"To"},{k:"schedule",label:"Timing",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"status",label:"Status",fmt:pill}],
+    fields:[{k:"event",label:"Trigger event",type:"select",required:true,options:["Appointment booked","24 h before appointment","Appointment cancelled","Lab result verified","Patient discharged","Stock below reorder level","Batch expiry within 90 days","Leave approved / rejected","Roster published"]},
+      {k:"template",label:"Template",type:"select",required:true,options:()=>db.get("templates").map(x=>({value:x.id,label:`${x.name} (${x.channel})`}))},
+      {k:"recipients",label:"Recipients",required:true},{k:"schedule",label:"Timing",type:"select",required:true,options:["Immediately","Daily 08:00","Daily 18:00","Weekly Monday 09:00"]},
+      {k:"status",label:"Status",type:"select",required:true,options:["Enabled","Disabled"],default:"Enabled"}],
+    rowActions:r=>`<button class="btn sm link" data-tg="${r.id}">${r.status==="Enabled"?"Disable":"Enable"}</button>`,
+    afterRender:tb=>tb.querySelectorAll("[data-tg]").forEach(b=>b.onclick=()=>{const L=db.get("rules"),x=L.find(y=>y.id===b.dataset.tg);x.status=x.status==="Enabled"?"Disabled":"Enabled";db.set("rules",L);t.render();refreshKpis();toast(`${x.event}: ${x.status.toLowerCase()}`);}),
+  });
+}
+
+function log(){
+  const t=crud(pane,{key:"notifLog",readOnly:true,searchPlaceholder:"Search recipient or template",
+    filters:[{k:"channel",label:"Channels",options:CH},{k:"status",label:"Statuses",options:["Sent","Failed"]}],
+    columns:[{k:"time",label:"Time",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"template",label:"Template",fmt:v=>esc(tplName(v)),text:r=>tplName(r.template)},
+      {k:"channel",label:"Channel"},{k:"to",label:"Recipient",fmt:v=>`<span class="mono">${esc(v)}</span>`},{k:"status",label:"Status",fmt:pill}],
+    rowActions:r=>r.status==="Failed"?`<button class="btn sm link" data-r="${r.id}">Retry</button>`:"",
+    afterRender:tb=>tb.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{const L=db.get("notifLog"),x=L.find(y=>y.id===b.dataset.r);x.status="Sent";db.set("notifLog",L);t.render();refreshKpis();toast("Marked as resent (demo — no message leaves this page)");}),
+  });
+}
+
+tabs("#tabs",["Templates","Alert rules","Delivery log"],i=>[templates,rules,log][i]());
+</script>
+</body>
+</html>

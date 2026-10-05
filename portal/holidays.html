@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Holiday Management · JAC Hospital Portal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+</head>
+<body>
+<div id="content">
+  <div id="kpis"></div>
+  <div class="grid-2" style="grid-template-columns:minmax(0,7fr) minmax(0,5fr)">
+    <div class="panel">
+      <div class="panel-head"><button class="btn sm" id="prev" aria-label="Previous month">‹</button><h2 id="mon" style="min-width:9rem;text-align:center"></h2><button class="btn sm" id="next" aria-label="Next month">›</button><button class="btn sm" id="thisMon">Today</button>
+        <span class="spacer"></span>
+        <div class="legend" style="padding:0"><span><i style="background:var(--alert)"></i>Hospital</span><span><i style="background:var(--warn)"></i>Department</span><span><i style="background:var(--info)"></i>Institutional</span></div></div>
+      <div class="panel-body"><div class="cal" id="cal"></div></div>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Coming up</h2></div><ul class="list" id="upcoming"></ul></div>
+  </div>
+  <div id="list"></div>
+</div>
+<script>
+const {db,esc,pill,crud,kpis,lookup,today,addDays,fmtDate,isoLocal}=Portal;
+const T=today();
+const SCOPES=["Hospital","Department","Institutional"];
+const CLS={Hospital:"",Department:"dept",Institutional:"inst"};
+let cur=new Date(T.slice(0,7)+"-01T00:00");
+
+function refreshKpis(){
+  const h=db.get("holidays").filter(x=>x.status==="Active"),y=T.slice(0,4);
+  kpis("#kpis",[
+    ...SCOPES.map(s=>({l:`${s} holidays`,n:h.filter(x=>x.scope===s&&x.date.startsWith(y)).length,d:`in ${y}`})),
+    {l:"Next holiday",n:(()=>{const n=h.filter(x=>x.date>=T).sort((a,b)=>a.date.localeCompare(b.date))[0];return n?fmtDate(n.date).slice(0,6):"—";})(),
+     d:(()=>{const n=h.filter(x=>x.date>=T).sort((a,b)=>a.date.localeCompare(b.date))[0];return n?n.name:"";})()},
+  ]);
+}
+function drawCal(){
+  const y=cur.getFullYear(),m=cur.getMonth();
+  document.getElementById("mon").textContent=cur.toLocaleDateString("en-IN",{month:"long",year:"numeric"});
+  const first=new Date(y,m,1),start=new Date(y,m,1-((first.getDay()+6)%7));
+  const H=db.get("holidays").filter(x=>x.status==="Active");
+  let html=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<div class="dh">${d}</div>`).join("");
+  const cells=Math.ceil((((first.getDay()+6)%7)+new Date(y,m+1,0).getDate())/7)*7;
+  for(let i=0;i<cells;i++){
+    const d=new Date(start);d.setDate(start.getDate()+i);const iso=isoLocal(d);
+    const ev=H.filter(h=>h.date===iso);
+    html+=`<div class="d ${d.getMonth()!==m?"out":""} ${iso===T?"today":""}"><span class="dn mono">${d.getDate()}</span>${ev.map(e=>`<span class="ev ${CLS[e.scope]}" title="${esc(e.name)}${e.dept?" · "+esc(lookup.dept(e.dept)):""}">${esc(e.name)}</span>`).join("")}</div>`;  }
+  document.getElementById("cal").innerHTML=html;
+}
+function drawUpcoming(){
+  const H=db.get("holidays").filter(x=>x.status==="Active"&&x.date>=T).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
+  document.getElementById("upcoming").innerHTML=H.map(h=>`<li><span class="mono" style="width:4.5rem">${fmtDate(h.date).slice(0,6)}</span><div class="grow"><b>${esc(h.name)}</b><div class="sub">${esc(h.scope)}${h.dept?" · "+esc(lookup.dept(h.dept)):""} · OPD ${esc(h.opd.toLowerCase())}</div></div></li>`).join("")||'<li class="empty">No upcoming holidays.</li>';
+}
+function refreshAll(){refreshKpis();drawCal();drawUpcoming();}
+document.getElementById("prev").onclick=()=>{cur.setMonth(cur.getMonth()-1);drawCal();};
+document.getElementById("next").onclick=()=>{cur.setMonth(cur.getMonth()+1);drawCal();};
+document.getElementById("thisMon").onclick=()=>{cur=new Date(T.slice(0,7)+"-01T00:00");drawCal();};
+
+crud("#list",{key:"holidays",idPrefix:"HOL",noun:"holiday",addLabel:"Add holiday",title:"Holiday list",searchPlaceholder:"Search holidays",onChange:refreshAll,
+  filters:[{k:"scope",label:"Scopes",options:SCOPES}],
+  columns:[{k:"date",label:"Date",fmt:v=>`<span class="mono">${fmtDate(v)}</span><div class="muted" style="font-size:.72rem">${new Date(v+"T00:00").toLocaleDateString("en-IN",{weekday:"long"})}</div>`},
+    {k:"name",label:"Holiday",fmt:v=>`<b>${esc(v)}</b>`},{k:"scope",label:"Scope",fmt:v=>`<span class="pill ${v==="Hospital"?"alert":v==="Department"?"warn":"info"}">${esc(v)}</span>`},
+    {k:"dept",label:"Department",fmt:v=>v?esc(lookup.dept(v)):'<span class="muted">All</span>',text:r=>r.dept?lookup.dept(r.dept):"All"},
+    {k:"opd",label:"OPD",fmt:v=>esc(v)},{k:"status",label:"Status",fmt:pill}],
+  fields:[{k:"date",label:"Date",type:"date",required:true},{k:"name",label:"Holiday name",required:true},
+    {k:"scope",label:"Scope",type:"select",required:true,options:SCOPES},{k:"dept",label:"Department (for department holidays)",type:"select",options:lookup.depts},
+    {k:"opd",label:"OPD on this day",type:"select",required:true,options:["Emergency only","Closed","Open"]},{k:"status",label:"Status",type:"select",required:true,options:["Active","Inactive"],default:"Active"}],
+  validate:v=>{if(v.scope==="Department"&&!v.dept)return "Choose the department for a department holiday.";if(v.scope!=="Department")v.dept="";return "";},
+});
+refreshAll();
+</script>
+</body>
+</html>
