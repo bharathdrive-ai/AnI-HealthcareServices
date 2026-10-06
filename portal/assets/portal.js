@@ -120,6 +120,23 @@ const auth={
   delete mem.users;auth.clear();
 })();
 
+/* When new seed records ship (e.g. more doctors), add them to this browser's saved data
+   without overwriting records the user has already edited. */
+(function(){
+  const v=window.DATA_VERSION;if(!v)return;
+  let saved=null;try{saved=localStorage.getItem(PREFIX+"dataVersion");}catch(e){}
+  if(saved===v)return;
+  ["staff","roster"].forEach(k=>{
+    let stored=null;try{stored=JSON.parse(localStorage.getItem(PREFIX+k));}catch(e){}
+    if(!Array.isArray(stored))return; // nothing saved yet: the seed is used as-is
+    const have=new Set(stored.map(r=>r.id));
+    const add=((window.SEED||{})[k]||[]).filter(r=>!have.has(r.id));
+    if(add.length){stored.push(...structuredClone(add));try{localStorage.setItem(PREFIX+k,JSON.stringify(stored));}catch(e){}}
+    delete mem[k];
+  });
+  try{localStorage.setItem(PREFIX+"dataVersion",v);}catch(e){}
+})();
+
 /* Gate every portal page except the login page. */
 const FILE=location.pathname.split("/").pop()||"index.html";
 const PAGE=PAGES.find(p=>p.file===FILE)||null;

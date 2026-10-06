@@ -65,6 +65,30 @@ const staff=[
   ["STF0018","Ravi Kumar","Pharmacist","DEP0001","B.Pharm","Chief Pharmacist","Permanent",16,"2010-09-01"],
   ["STF0019","Neha Jain","Admin","DEP0001","MBA (Hospital Admin)","Front Office Manager","Permanent",7,"2019-04-22"],
   ["STF0020","Suresh Babu","Support","DEP0002","—","OT Assistant","Contract",4,"2022-08-08"],
+  ["STF0021","Dr. Sanjay Hegde","Doctor","DEP0001","MD (General Medicine)","Associate Professor","Permanent",15,"2011-07-01"],
+  ["STF0022","Dr. Nandini Shetty","Doctor","DEP0001","MD (General Medicine)","Assistant Professor","Permanent",8,"2018-08-16"],
+  ["STF0023","Dr. Karthik Shenoy","Doctor","DEP0002","MS (General Surgery)","Associate Professor","Permanent",13,"2013-02-04"],
+  ["STF0024","Dr. Ayesha Khan","Doctor","DEP0002","MS (General Surgery), FMAS","Assistant Professor","Permanent",7,"2019-06-10"],
+  ["STF0025","Dr. Rajesh Menon","Doctor","DEP0003","MD, DM (Cardiology)","Associate Professor","Permanent",14,"2012-09-01"],
+  ["STF0026","Dr. Shruti Patil","Doctor","DEP0003","MD, DM (Cardiology)","Assistant Professor","Permanent",6,"2020-03-02"],
+  ["STF0027","Dr. Prakash Gowda","Doctor","DEP0004","MS (Ortho)","Associate Professor","Permanent",16,"2010-11-15"],
+  ["STF0028","Dr. Divya Krishnan","Doctor","DEP0004","MS (Ortho), Fellowship Sports Medicine","Assistant Professor","Contract",7,"2019-01-21"],
+  ["STF0029","Dr. Usha Narayan","Doctor","DEP0005","MS (OBG)","Professor","Permanent",21,"2005-06-13"],
+  ["STF0030","Dr. Sneha Reddy","Doctor","DEP0005","MS (OBG)","Assistant Professor","Permanent",6,"2020-07-06"],
+  ["STF0031","Dr. Arvind Kumar","Doctor","DEP0006","MD (Paediatrics), DM (Neonatology)","Associate Professor","Permanent",13,"2013-04-08"],
+  ["STF0032","Dr. Meghana Bhat","Doctor","DEP0006","MD (Paediatrics)","Assistant Professor","Permanent",5,"2021-02-15"],
+  ["STF0033","Dr. Harini Subramanian","Doctor","DEP0007","MD, DM (Neurology)","Associate Professor","Permanent",12,"2014-10-01"],
+  ["STF0034","Dr. Rahul Deshpande","Doctor","DEP0007","MD, DM (Neurology)","Assistant Professor","Permanent",6,"2020-09-14"],
+  ["STF0035","Dr. Manjunath Kamath","Doctor","DEP0008","MS (ENT)","Associate Professor","Permanent",15,"2011-12-05"],
+  ["STF0036","Dr. Farah Siddiqui","Doctor","DEP0008","MS (ENT)","Assistant Professor","Contract",5,"2021-08-02"],
+  ["STF0037","Dr. Suresh Iyengar","Doctor","DEP0009","MS (Ophthalmology)","Professor","Permanent",23,"2003-01-06"],
+  ["STF0038","Dr. Pooja Nair","Doctor","DEP0009","MS (Ophthalmology), FICO","Assistant Professor","Permanent",6,"2020-05-18"],
+  ["STF0039","Dr. Abhishek Verma","Doctor","DEP0010","MD (Emergency Medicine)","Assistant Professor","Permanent",7,"2019-03-11"],
+  ["STF0040","Dr. Rekha Joseph","Doctor","DEP0010","MD (Emergency Medicine)","Senior Resident","Contract",4,"2022-07-04"],
+  ["STF0041","Dr. Ganesh Murthy","Doctor","DEP0011","MD (Pathology)","Associate Professor","Permanent",14,"2012-06-25"],
+  ["STF0042","Dr. Anitha Thomas","Doctor","DEP0011","MD (Pathology)","Assistant Professor","Permanent",6,"2020-10-12"],
+  ["STF0043","Dr. Vivek Sharma","Doctor","DEP0012","MD (Radio-diagnosis)","Associate Professor","Permanent",12,"2014-02-17"],
+  ["STF0044","Dr. Nisha Agarwal","Doctor","DEP0012","DNB (Radiology)","Assistant Professor","Permanent",5,"2021-04-05"],
 ].map(([id,name,role,dept,qual,designation,type,exp,joined],i)=>({id,name,role,dept,qual,designation,type,exp,joined,phone:`98450${String(10000+i*137).slice(-5)}`,email:name.toLowerCase().replace(/^(dr|sr)\.\s*/,"").replace(/\s+/g,".")+"@jac.example",status:i===19?"On Leave":"Active"}));
 
 const firstNames=["Ramesh","Sita","Abdul","Priyanka","Joseph","Kavitha","Anil","Fathima","Ganesh","Lalitha","Mohan","Nirmala","Prakash","Rekha","Santosh","Usha","Vinod","Yamini","Harish","Bhavana"];
@@ -269,5 +293,7 @@ const hospital={id:"HOSP",name:"JAC Medical College & Hospital",regNo:"KA/BLR/CE
 
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";
+/* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
+window.DATA_VERSION="2026-10-06-doctors";
 window.SEED={hospital,departments,wards,rooms,roomTypes,beds,staff,patients,appointments,services,orders,suppliers,medicines,batches,prescriptions,dispenses,returns,roster,shifts,leaves,holidays,templates,rules,notifLog,roles,permissions,users,settings,audit,MODULES};
 })();
