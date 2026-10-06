@@ -32,6 +32,7 @@ Shared code: `portal/assets/portal.css`, `portal.js` (shell, store, table compon
 "MediAssist" in the header (next to Book appointment; a chat icon on smaller screens) opens **AniBuddy**, a help assistant. Files: `assets/mediassist.js`, `assets/mediassist.css`.
 
 - Answers from the site's own data: departments and OPD days, doctors and heads, live free slots for a doctor or department on a date ("cardiology slots tomorrow"), fees, booking/reschedule/check-in rules, holidays, visiting hours, pharmacy, blood bank, contacts, programmes and admissions.
+- FAQs: hospital admission, what to bring, lab reports, home sample collection, health check-up packages, vaccination, medical records, payment methods, parking, wheelchair access, canteen, video consultation, languages, feedback. Type "help" for the list. These use sample details; replace with the real ones.
 - Understands everyday words (heart, kids, x-ray, eye) and dates (today, tomorrow, Friday, 12 Oct).
 - Safety: no medical advice; emergency words show 108 and Casualty; self-harm words show 108 and Tele-MANAS (14416). Asks for and stores no personal details.
 - Rule-based and runs in the browser (no API key or server). An AI-powered version would need a small server to keep the API key secret.
