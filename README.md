@@ -27,6 +27,15 @@ All names, phone numbers, doctors and figures are placeholders.
 | 13 | notifications.html | SMS / email / app templates, alert rules, delivery log |
 
 Shared code: `portal/assets/portal.css`, `portal.js` (shell, store, table component) and `data.js` (sample data).
+### MediAssist (AniBuddy)
+
+"MediAssist" in the header (next to Book appointment; a chat icon on smaller screens) opens **AniBuddy**, a help assistant. Files: `assets/mediassist.js`, `assets/mediassist.css`.
+
+- Answers from the site's own data: departments and OPD days, doctors and heads, live free slots for a doctor or department on a date ("cardiology slots tomorrow"), fees, booking/reschedule/check-in rules, holidays, visiting hours, pharmacy, blood bank, contacts, programmes and admissions.
+- Understands everyday words (heart, kids, x-ray, eye) and dates (today, tomorrow, Friday, 12 Oct).
+- Safety: no medical advice; emergency words show 108 and Casualty; self-harm words show 108 and Tele-MANAS (14416). Asks for and stores no personal details.
+- Rule-based and runs in the browser (no API key or server). An AI-powered version would need a small server to keep the API key secret.
+
 ### Appointment management
 
 Three areas share one appointment engine (`portal/assets/appt.js`), so a booking made anywhere shows up everywhere:

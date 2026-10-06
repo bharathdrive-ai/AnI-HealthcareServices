@@ -1,0 +1,44 @@
+/* MediAssist chat panel (AniBuddy). Uses the site's colour tokens, so light/dark follow the page theme. */
+.ma-panel{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;width:min(400px,calc(100vw - 32px));height:min(620px,calc(100vh - 120px));
+  display:flex;flex-direction:column;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(10,30,25,.22);overflow:hidden;font-family:var(--f-body)}
+.ma-panel[hidden]{display:none}
+.ma-head{display:flex;align-items:center;gap:.7rem;padding:.8rem 1rem;background:var(--scrub);color:var(--on-accent)}
+.ma-avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:.85rem;background:color-mix(in srgb,var(--on-accent) 22%,transparent);flex:none}
+.ma-title{display:flex;flex-direction:column;line-height:1.2;min-width:0;flex:1}
+.ma-title b{font-size:1rem}
+.ma-title small{font-size:.75rem;opacity:.85}
+.ma-close{background:none;border:0;color:inherit;font-size:1.1rem;width:40px;height:40px;border-radius:50%;cursor:pointer}
+.ma-close:hover{background:color-mix(in srgb,var(--on-accent) 18%,transparent)}
+.ma-log{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem;background:var(--bg)}
+.ma-msg{max-width:88%;padding:.6rem .8rem;border-radius:12px;font-size:.92rem;line-height:1.5;overflow-wrap:anywhere}
+.ma-msg.bot{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-top-left-radius:4px}
+.ma-msg.me{align-self:flex-end;background:var(--scrub);color:var(--on-accent);border-top-right-radius:4px}
+.ma-msg ul,.ma-msg ol{margin:.35rem 0 .2rem;padding-left:1.1rem}
+.ma-msg li+li{margin-top:.2rem}
+.ma-msg a{color:var(--scrub);font-weight:600}
+.ma-slot{display:inline-block;font-family:var(--f-mono);font-size:.8rem;padding:.05rem .4rem;border-radius:4px;background:var(--scrub-soft);color:var(--scrub);margin:.1rem 0}
+.ma-chips{display:flex;flex-wrap:wrap;gap:.4rem;align-self:flex-start;max-width:100%}
+.ma-chips button{border:1px solid var(--scrub);background:var(--surface);color:var(--scrub);border-radius:999px;padding:.4rem .8rem;font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;min-height:36px}
+.ma-chips button:hover{background:var(--scrub-soft)}
+.ma-typing{display:flex;gap:.25rem;align-items:center;padding:.75rem .9rem}
+.ma-typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:maDot 1s infinite}
+.ma-typing span:nth-child(2){animation-delay:.15s}.ma-typing span:nth-child(3){animation-delay:.3s}
+@keyframes maDot{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.ma-typing span{animation:none}}
+.ma-form{display:flex;gap:.5rem;padding:.7rem;border-top:1px solid var(--line);background:var(--surface)}
+.ma-form input{flex:1;min-width:0;font:inherit;font-size:.95rem;padding:.65rem .8rem;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--ink)}
+.ma-form button{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--scrub);color:var(--on-accent);font-size:1rem;cursor:pointer}
+.ma-note{margin:0;padding:.35rem .9rem .6rem;font-size:.72rem;color:var(--muted);background:var(--surface);text-align:center}
+.ma-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Header launchers */
+nav.main a.nav-assist{display:inline-flex;align-items:center;gap:.35rem;color:var(--scrub);font-weight:600}
+@media (min-width:1280px){nav.main a.nav-assist svg{display:none}}
+nav.main a.nav-assist svg{width:18px;height:18px}
+.ma-icon-btn{display:none;place-items:center;width:40px;height:40px;flex:none;border-radius:50%;border:1px solid var(--scrub);background:var(--scrub-soft);color:var(--scrub);cursor:pointer;order:2}
+.ma-icon-btn svg{width:20px;height:20px}
+@media (max-width:1279px){.ma-icon-btn{display:inline-grid}}
+/* Phones: full-screen sheet */
+@media (max-width:560px){
+  .ma-panel{right:0;left:0;bottom:0;top:env(safe-area-inset-top,0px);width:100%;height:auto;border-radius:0;border:0}
+  body.ma-open{overflow:hidden}
+}
