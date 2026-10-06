@@ -1,4 +1,4 @@
-/* JAC Hospital Portal — sample seed data. All names, numbers and figures are placeholders. */
+/* AnI-HealthcareServices Portal — sample seed data. All names, numbers and figures are placeholders. */
 (function(){
 const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const T=iso(new Date());
@@ -213,9 +213,9 @@ const holidays=[
 ].map(([date,name,scope,dept],i)=>({id:`HOL${String(i+1).padStart(4,"0")}`,date,name,scope,dept:dept||"",opd:scope==="Hospital"?"Emergency only":(scope==="Department"?"Closed":"Open"),status:"Active"}));
 
 const templates=[
-  ["TPL0001","Appointment confirmation","SMS","Appointment","Dear {patient}, your appointment with {doctor} is confirmed for {date} at {slot}. Token {token}. – JAC Hospital"],
-  ["TPL0002","Appointment reminder (24 h)","SMS","Appointment","Reminder: {patient}, you have an appointment tomorrow {date} at {slot} with {doctor}. Reply C to cancel. – JAC Hospital"],
-  ["TPL0003","Lab report ready","App","Laboratory","Your {test} report is ready. View it in the JAC app or collect it from Lab counter, Block D."],
+  ["TPL0001","Appointment confirmation","SMS","Appointment","Dear {patient}, your appointment with {doctor} is confirmed for {date} at {slot}. Token {token}. – AnI-HealthcareServices"],
+  ["TPL0002","Appointment reminder (24 h)","SMS","Appointment","Reminder: {patient}, you have an appointment tomorrow {date} at {slot} with {doctor}. Reply C to cancel. – AnI-HealthcareServices"],
+  ["TPL0003","Lab report ready","App","Laboratory","Your {test} report is ready. View it in the AnI-HealthcareServices app or collect it from Lab counter, Block D."],
   ["TPL0004","Discharge summary","Email","Patient","Dear {patient}, please find your discharge summary attached. Follow-up: {followup}."],
   ["TPL0005","Low stock alert","Email","Inventory","Stock for {medicine} is {qty} units, below reorder level {reorder}. Please raise a PO."],
   ["TPL0006","Near-expiry alert","Email","Inventory","{count} batches expire within {days} days. Review the Medicine & Inventory page."],
@@ -289,7 +289,7 @@ const audit=[
   [D(-1)+" 16:05","meera.iyer","Ordered 2D Echocardiography for UHID240179"],
 ].map(([time,user,action],i)=>({id:`AUD${i+1}`,time,user,action}));
 
-const hospital={id:"HOSP",name:"JAC Medical College & Hospital",regNo:"KA/BLR/CE/2026/00451",nabh:"NABH-H-2021-0187",nmc:"NMC/MBBS/150/2019",address:"Hospital Road, Sector 12, Bengaluru 560 000",phone:"+91 80 4000 1000",email:"info@jac.example",beds:1050,icuBeds:96,ots:14,established:"1987",gstin:"29AAATJ0000A1Z0"};
+const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00451",nabh:"NABH-H-2021-0187",nmc:"NMC/MBBS/150/2019",address:"Hospital Road, Sector 12, Bengaluru 560 000",phone:"+91 80 4000 1000",email:"info@jac.example",beds:1050,icuBeds:96,ots:14,established:"1987",gstin:"29AAATJ0000A1Z0"};
 
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";

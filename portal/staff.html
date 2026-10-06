@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Staff Management · JAC Hospital Portal</title>
+<title>Staff Management · AnI-HealthcareServices Portal</title>
 <link rel="icon" href="../assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="../assets/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -38,7 +38,7 @@ function profile(id){
   const lv=db.get("leaves").filter(l=>l.staff===id);
   const appts=db.get("appointments").filter(a=>a.doctor===id);
   modal({title:s.name,wide:true,body:`<div class="grid-2" style="gap:1.5rem"><div><table class="dt"><tbody>
-    ${[["Employee ID",`<span class="mono">${s.id}</span>`],["Role",esc(s.role)],["Designation",esc(s.designation)],["Department",esc(lookup.dept(s.dept))],["Qualification",esc(s.qual)],["Experience",`${s.exp} years total · ${yrs} at JAC`],["Joined",fmtDate(s.joined)],["Employment",esc(s.type)],["Mobile",`<span class="mono">${esc(s.phone)}</span>`],["Email",esc(s.email)],["Status",pill(s.status)]].map(([k,v])=>`<tr><td class="muted">${k}</td><td>${v}</td></tr>`).join("")}
+    ${[["Employee ID",`<span class="mono">${s.id}</span>`],["Role",esc(s.role)],["Designation",esc(s.designation)],["Department",esc(lookup.dept(s.dept))],["Qualification",esc(s.qual)],["Experience",`${s.exp} years total · ${yrs} at AnI-HealthcareServices`],["Joined",fmtDate(s.joined)],["Employment",esc(s.type)],["Mobile",`<span class="mono">${esc(s.phone)}</span>`],["Email",esc(s.email)],["Status",pill(s.status)]].map(([k,v])=>`<tr><td class="muted">${k}</td><td>${v}</td></tr>`).join("")}
     </tbody></table></div><div>
     <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.5rem">Leave history</h3>
     <ul class="list" style="border:1px solid var(--line);border-radius:8px">${lv.map(l=>`<li><div class="grow">${esc(l.type)}<div class="sub">${fmtDate(l.from)} – ${fmtDate(l.to)} · ${l.days} d</div></div>${pill(l.status)}</li>`).join("")||'<li class="empty">No leave taken.</li>'}</ul>

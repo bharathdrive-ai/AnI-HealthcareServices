@@ -1,4 +1,4 @@
-/* JAC Hospital Portal — shared shell, data store and UI helpers.
+/* AnI-HealthcareServices Portal — shared shell, data store and UI helpers.
    Data lives in localStorage (per browser) and is seeded from data.js. */
 (function(){
 /* Theme: same "jac.theme" choice as the public site; applied before the page paints. */
@@ -340,7 +340,7 @@ function shell(){
   if(BLOCKED||!PAGE) return;
   const page=PAGE,user=auth.user();
   const role=db.find("roles",user.role);
-  document.title=`${page.title} · JAC Hospital Portal`;
+  document.title=`${page.title} · AnI-HealthcareServices Portal`;
   const content=document.getElementById("content");
   const visible=PAGES.filter(p=>auth.can(p.mod));
   const groups=[...new Set(visible.map(p=>p.group))];
