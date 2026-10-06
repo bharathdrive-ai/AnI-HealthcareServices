@@ -191,7 +191,13 @@ section.block{padding-block:4.5rem}
 .days i.off{background:transparent;color:var(--muted);text-decoration:line-through}
 
 /* Doctors */
-.filters{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.2rem}
+.filters{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:1.2rem}
+.chip-row{display:flex;flex-wrap:wrap;gap:.5rem;flex:1 1 100%;min-width:0}
+/* Phones: one swipeable row of department filters instead of a tall block */
+@media (max-width:700px){
+  .chip-row{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:.4rem;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .chip-row .chip{flex:none;scroll-snap-align:start;min-height:36px}
+}
 .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.35rem .9rem;font:inherit;font-size:.85rem;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--scrub);border-color:var(--scrub);color:var(--on-accent)}
 .search{flex:1 1 220px;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.35rem 1rem;font:inherit;font-size:.9rem}
@@ -204,6 +210,7 @@ section.block{padding-block:4.5rem}
 .doc .meta .mono{color:var(--scrub)}
 .doc button{margin-top:.6rem;background:none;border:0;padding:0;color:var(--scrub);font:inherit;font-weight:600;font-size:.85rem;cursor:pointer}
 .empty{padding:2rem;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+.doc .walkin{display:inline-block;margin-top:.6rem;font-size:.85rem;font-weight:600;color:var(--alert)}
 
 /* Appointment */
 .appt{background:linear-gradient(135deg,var(--scrub-soft),color-mix(in srgb,var(--teal) 10%,var(--bg)))}
@@ -576,6 +583,15 @@ const DOCS=[
  {n:"Dr. Farah Siddiqui",q:"MS (ENT)",s:"ENT",r:"Assistant Professor",exp:5},
  {n:"Dr. Suresh Iyengar",q:"MS (Ophthalmology)",s:"Ophthalmology",r:"Professor",exp:23},
  {n:"Dr. Pooja Nair",q:"MS (Ophthalmology), FICO",s:"Ophthalmology",r:"Assistant Professor",exp:6},
+ {n:"Dr. Naveen Reddy",q:"MD (Emergency Medicine)",s:"Emergency Care",r:"Associate Professor",exp:10},
+ {n:"Dr. Abhishek Verma",q:"MD (Emergency Medicine)",s:"Emergency Care",r:"Assistant Professor",exp:7},
+ {n:"Dr. Rekha Joseph",q:"MD (Emergency Medicine)",s:"Emergency Care",r:"Senior Resident",exp:4},
+ {n:"Dr. Sunita Rao",q:"MD (Pathology)",s:"Pathology & Laboratory",r:"Professor & Head",exp:19},
+ {n:"Dr. Ganesh Murthy",q:"MD (Pathology)",s:"Pathology & Laboratory",r:"Associate Professor",exp:14},
+ {n:"Dr. Anitha Thomas",q:"MD (Pathology)",s:"Pathology & Laboratory",r:"Assistant Professor",exp:6},
+ {n:"Dr. Imran Khan",q:"MD (Radio-diagnosis)",s:"Radiology",r:"Professor & Head",exp:18},
+ {n:"Dr. Vivek Sharma",q:"MD (Radio-diagnosis)",s:"Radiology",r:"Associate Professor",exp:12},
+ {n:"Dr. Nisha Agarwal",q:"DNB (Radiology)",s:"Radiology",r:"Assistant Professor",exp:5},
 ];
 
 // Date and OPD board
@@ -607,14 +623,15 @@ document.getElementById("deptGrid").innerHTML=DEPTS.map(d=>`
   <div class="days" aria-label="${d.always?"Open 24 hours, 7 days":"OPD days"}">${d.always?'<i class="always">Open 24 × 7</i>':d.days.map((on,i)=>`<i class="${on?"":"off"}">${DAYNAMES[i]}</i>`).join("")}</div></article>`).join("");
 
 // Doctors with filters
-const specs=["All",...new Set(DOCS.map(d=>d.s))];
+const specs=["All",...DEPTS.map(d=>d.n).filter(n=>DOCS.some(x=>x.s===n))];
 const filters=document.getElementById("filters");
 let activeSpec="All",query="";
+const chipRow=document.createElement("div");chipRow.className="chip-row";chipRow.setAttribute("role","group");chipRow.setAttribute("aria-label","Filter by department");filters.appendChild(chipRow);
 specs.forEach(s=>{
   const b=document.createElement("button");
   b.type="button";b.className="chip";b.textContent=s;b.setAttribute("aria-pressed",s==="All");
-  b.onclick=()=>{activeSpec=s;filters.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c.textContent===s));renderDocs();};
-  filters.appendChild(b);
+  b.onclick=()=>{activeSpec=s;filters.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c.textContent===s));renderDocs();b.scrollIntoView({block:"nearest",inline:"nearest"});};
+  chipRow.appendChild(b);
 });
 document.getElementById("docSearch").addEventListener("input",e=>{query=e.target.value.trim().toLowerCase();renderDocs();});
 function initials(n){return n.replace("Dr. ","").split(" ").map(w=>w[0]).join("").slice(0,2);}
@@ -625,7 +642,7 @@ function renderDocs(){
     <div class="doc"><div class="avatar" aria-hidden="true">${initials(d.n)}</div><div>
     <b>${d.n}</b><span class="q">${d.q}</span>
     <div class="meta"><span>${d.r}</span><span class="mono">${d.exp} yrs</span></div>
-    <button type="button" data-dept="${d.s}">Book with this department →</button></div></div>`).join("")
+    ${DEPTS.find(x=>x.n===d.s)?.always?`<span class="walkin">Walk in 24×7 · Casualty, Gate 2</span>`:`<button type="button" data-dept="${d.s}">Book with this department →</button>`}</div></div>`).join("")
     :`<div class="empty">No doctors match “${query}”. Try a speciality such as cardiology.</div>`;
   g.querySelectorAll("button[data-dept]").forEach(b=>b.onclick=()=>{document.getElementById("pDept").value=b.dataset.dept;document.getElementById("appointment").scrollIntoView();document.getElementById("pName").focus({preventScroll:true});});
 }

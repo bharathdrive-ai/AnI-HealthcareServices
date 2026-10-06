@@ -89,6 +89,8 @@ const staff=[
   ["STF0042","Dr. Anitha Thomas","Doctor","DEP0011","MD (Pathology)","Assistant Professor","Permanent",6,"2020-10-12"],
   ["STF0043","Dr. Vivek Sharma","Doctor","DEP0012","MD (Radio-diagnosis)","Associate Professor","Permanent",12,"2014-02-17"],
   ["STF0044","Dr. Nisha Agarwal","Doctor","DEP0012","DNB (Radiology)","Assistant Professor","Permanent",5,"2021-04-05"],
+  ["STF0045","Dr. Sunita Rao","Doctor","DEP0011","MD (Pathology)","Professor & Head","Permanent",19,"2007-08-01"],
+  ["STF0046","Dr. Imran Khan","Doctor","DEP0012","MD (Radio-diagnosis)","Professor & Head","Permanent",18,"2008-03-17"],
 ].map(([id,name,role,dept,qual,designation,type,exp,joined],i)=>({id,name,role,dept,qual,designation,type,exp,joined,phone:`98450${String(10000+i*137).slice(-5)}`,email:name.toLowerCase().replace(/^(dr|sr)\.\s*/,"").replace(/\s+/g,".")+"@ani-healthcareservices.example",status:i===19?"On Leave":"Active"}));
 
 const firstNames=["Ramesh","Sita","Abdul","Priyanka","Joseph","Kavitha","Anil","Fathima","Ganesh","Lalitha","Mohan","Nirmala","Prakash","Rekha","Santosh","Usha","Vinod","Yamini","Harish","Bhavana"];
@@ -294,7 +296,7 @@ const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";
 /* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
-window.DATA_VERSION="2026-10-06-emergency-care";
+window.DATA_VERSION="2026-10-06-dept-heads";
 /* ---------- Appointment management ---------- */
 const slotConfig={id:"CFG",slotMinutes:15,
   sessions:{AM:{start:"09:00",end:"13:00"},PM:{start:"14:00",end:"16:00"}},

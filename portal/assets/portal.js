@@ -129,7 +129,7 @@ const auth={
   const v=window.DATA_VERSION;if(!v)return;
   let saved=null;try{saved=localStorage.getItem(PREFIX+"dataVersion");}catch(e){}
   if(saved===v)return;
-  ["staff","roster"].forEach(k=>{
+  ["staff","roster","doctorAvail"].forEach(k=>{
     let stored=null;try{stored=JSON.parse(localStorage.getItem(PREFIX+k));}catch(e){}
     if(!Array.isArray(stored))return; // nothing saved yet: the seed is used as-is
     const have=new Set(stored.map(r=>r.id));
