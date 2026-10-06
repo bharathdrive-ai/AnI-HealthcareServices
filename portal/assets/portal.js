@@ -134,6 +134,11 @@ const auth={
     if(add.length){stored.push(...structuredClone(add));try{localStorage.setItem(PREFIX+k,JSON.stringify(stored));}catch(e){}}
     delete mem[k];
   });
+  /* Email domain moved from jac.example to the AnI-HealthcareServices name: update saved copies in place. */
+  ["staff","users","hospital","notifLog"].forEach(k=>{
+    let raw=null;try{raw=localStorage.getItem(PREFIX+k);}catch(e){}
+    if(raw&&raw.includes("@jac.example")){try{localStorage.setItem(PREFIX+k,raw.split("@jac.example").join("@ani-healthcareservices.example"));}catch(e){}delete mem[k];}
+  });
   try{localStorage.setItem(PREFIX+"dataVersion",v);}catch(e){}
 })();
 

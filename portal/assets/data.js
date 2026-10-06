@@ -89,7 +89,7 @@ const staff=[
   ["STF0042","Dr. Anitha Thomas","Doctor","DEP0011","MD (Pathology)","Assistant Professor","Permanent",6,"2020-10-12"],
   ["STF0043","Dr. Vivek Sharma","Doctor","DEP0012","MD (Radio-diagnosis)","Associate Professor","Permanent",12,"2014-02-17"],
   ["STF0044","Dr. Nisha Agarwal","Doctor","DEP0012","DNB (Radiology)","Assistant Professor","Permanent",5,"2021-04-05"],
-].map(([id,name,role,dept,qual,designation,type,exp,joined],i)=>({id,name,role,dept,qual,designation,type,exp,joined,phone:`98450${String(10000+i*137).slice(-5)}`,email:name.toLowerCase().replace(/^(dr|sr)\.\s*/,"").replace(/\s+/g,".")+"@jac.example",status:i===19?"On Leave":"Active"}));
+].map(([id,name,role,dept,qual,designation,type,exp,joined],i)=>({id,name,role,dept,qual,designation,type,exp,joined,phone:`98450${String(10000+i*137).slice(-5)}`,email:name.toLowerCase().replace(/^(dr|sr)\.\s*/,"").replace(/\s+/g,".")+"@ani-healthcareservices.example",status:i===19?"On Leave":"Active"}));
 
 const firstNames=["Ramesh","Sita","Abdul","Priyanka","Joseph","Kavitha","Anil","Fathima","Ganesh","Lalitha","Mohan","Nirmala","Prakash","Rekha","Santosh","Usha","Vinod","Yamini","Harish","Bhavana"];
 const lastNames=["Gowda","Sharma","Rahman","Patel","D'Souza","Reddy","Kumar","Begum","Hegde","Iyer","Naik","Rao","Shetty","Pillai","Desai","Menon","Joshi","Nair","Bhat","Varma"];
@@ -230,7 +230,7 @@ const rules=[
   ["RUL0005","Batch expiry within 90 days","TPL0006","Pharmacy head","Weekly Monday 09:00"],
   ["RUL0006","Leave approved / rejected","TPL0007","Staff member","Immediately"],
 ].map(([id,event,template,recipients,schedule],i)=>({id,event,template,recipients,schedule,status:i===4?"Disabled":"Enabled"}));
-const notifLog=Array.from({length:12},(_,i)=>({id:`NTF${String(i+1).padStart(4,"0")}`,time:`${D(-(i%3))} ${String(8+i%10).padStart(2,"0")}:${String((i*7)%60).padStart(2,"0")}`,template:templates[i%6].id,to:i%3===2?"stores@jac.example":`98${String(45000000+i*1371).slice(0,8)}`,channel:templates[i%6].channel,status:i===4?"Failed":"Sent"}));
+const notifLog=Array.from({length:12},(_,i)=>({id:`NTF${String(i+1).padStart(4,"0")}`,time:`${D(-(i%3))} ${String(8+i%10).padStart(2,"0")}:${String((i*7)%60).padStart(2,"0")}`,template:templates[i%6].id,to:i%3===2?"stores@ani-healthcareservices.example":`98${String(45000000+i*1371).slice(0,8)}`,channel:templates[i%6].channel,status:i===4?"Failed":"Sent"}));
 
 const roles=[
   {id:"ROL0001",name:"Super Admin",desc:"Full access to every module",users:1},
@@ -264,14 +264,14 @@ const PW={
   "frontdesk2":"e700a86c18ac4907931ee97f2e4f78c47515fd40abb79b7bdce26ea1d6051e2d"
 };
 const users=[
-  ["USR0001","admin","Records Admin","ROL0001","admin@jac.example"],
-  ["USR0002","neha.jain","Neha Jain","ROL0002","neha.jain@jac.example"],
-  ["USR0003","meera.iyer","Dr. Meera Iyer","ROL0003","meera.iyer@jac.example"],
-  ["USR0004","rohan.kulkarni","Dr. Rohan Kulkarni","ROL0003","rohan.kulkarni@jac.example"],
-  ["USR0005","lakshmi.pillai","Sr. Lakshmi Pillai","ROL0004","lakshmi.pillai@jac.example"],
-  ["USR0006","ravi.kumar","Ravi Kumar","ROL0005","ravi.kumar@jac.example"],
-  ["USR0007","hr.desk","HR Desk","ROL0006","hr@jac.example"],
-  ["USR0008","frontdesk2","Front Desk 2","ROL0002","frontdesk2@jac.example"],
+  ["USR0001","admin","Records Admin","ROL0001","admin@ani-healthcareservices.example"],
+  ["USR0002","neha.jain","Neha Jain","ROL0002","neha.jain@ani-healthcareservices.example"],
+  ["USR0003","meera.iyer","Dr. Meera Iyer","ROL0003","meera.iyer@ani-healthcareservices.example"],
+  ["USR0004","rohan.kulkarni","Dr. Rohan Kulkarni","ROL0003","rohan.kulkarni@ani-healthcareservices.example"],
+  ["USR0005","lakshmi.pillai","Sr. Lakshmi Pillai","ROL0004","lakshmi.pillai@ani-healthcareservices.example"],
+  ["USR0006","ravi.kumar","Ravi Kumar","ROL0005","ravi.kumar@ani-healthcareservices.example"],
+  ["USR0007","hr.desk","HR Desk","ROL0006","hr@ani-healthcareservices.example"],
+  ["USR0008","frontdesk2","Front Desk 2","ROL0002","frontdesk2@ani-healthcareservices.example"],
 ].map(([id,username,name,role,email],i)=>({id,username,name,role,email,pw:PW[username]||"",lastLogin:i===7?"":`${D(-(i%4))} 0${8+i%2}:${String(10+i*6).slice(-2)}`,status:i===7?"Inactive":"Active"}));
 const settings=[
   {id:"SET0001",key:"OPD registration window",value:"08:00 – 13:00",group:"OPD"},
@@ -289,11 +289,11 @@ const audit=[
   [D(-1)+" 16:05","meera.iyer","Ordered 2D Echocardiography for UHID240179"],
 ].map(([time,user,action],i)=>({id:`AUD${i+1}`,time,user,action}));
 
-const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00451",nabh:"NABH-H-2021-0187",nmc:"NMC/MBBS/150/2019",address:"Hospital Road, Sector 12, Bengaluru 560 000",phone:"+91 80 4000 1000",email:"info@jac.example",beds:1050,icuBeds:96,ots:14,established:"1987",gstin:"29AAATJ0000A1Z0"};
+const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00451",nabh:"NABH-H-2021-0187",nmc:"NMC/MBBS/150/2019",address:"Hospital Road, Sector 12, Bengaluru 560 000",phone:"+91 80 4000 1000",email:"info@ani-healthcareservices.example",beds:1050,icuBeds:96,ots:14,established:"1987",gstin:"29AAATJ0000A1Z0"};
 
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";
 /* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
-window.DATA_VERSION="2026-10-06-doctors";
+window.DATA_VERSION="2026-10-06-emails";
 window.SEED={hospital,departments,wards,rooms,roomTypes,beds,staff,patients,appointments,services,orders,suppliers,medicines,batches,prescriptions,dispenses,returns,roster,shifts,leaves,holidays,templates,rules,notifLog,roles,permissions,users,settings,audit,MODULES};
 })();
