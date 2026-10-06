@@ -202,7 +202,7 @@ function walkIns(){
       <details id="wNewBox"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">New patient</summary><div class="form-grid" style="margin-top:.6rem">
         <div class="field"><label for="wName">Full name</label><input id="wName"></div><div class="field"><label for="wPhone">Mobile</label><input id="wPhone" inputmode="numeric"></div>
         <div class="field"><label for="wGender">Gender</label><select id="wGender"><option>Male</option><option>Female</option><option>Other</option></select></div><div class="field"><label for="wDob">Date of birth</label><input id="wDob" type="date" max="${T}"></div></div></details>
-      <div class="form-grid"><div class="field"><label for="wDept">Department</label><select id="wDept">${opts(DEPTS().filter(d=>A.doctors(d.id).length).map(d=>({value:d.id,label:d.name})))}</select></div>
+      <div class="form-grid"><div class="field"><label for="wDept">Department</label><select id="wDept">${opts(A.deptsInOrder({opdOnly:true}).filter(d=>A.doctors(d.id).length).map(d=>({value:d.id,label:d.name})))}</select></div>
       <div class="field"><label for="wDoc">Doctor</label><select id="wDoc"></select></div>
       <div class="field full"><label for="wWhy">Reason</label><input id="wWhy" placeholder="e.g. fever since 2 days"></div></div>
       <div><button class="btn primary" id="wGo">Register and issue token</button> <span class="err" id="wErr"></span></div>

@@ -74,7 +74,7 @@ function fillDocs(){
 }
 function fillPatients(sel){$("bPatient").innerHTML=`<option value="">Choose a patient</option>`+opts(lookup.patients(),sel);}
 
-$("bDept").innerHTML=opts(lookup.depts().filter(d=>lookup.doctors().some(x=>db.find("staff",x.value).dept===d.value)));
+$("bDept").innerHTML=opts(A.deptsInOrder({opdOnly:true}).filter(d=>A.doctors(d.id).length).map(d=>({value:d.id,label:d.name})));
 $("bDate").min=T;$("bDate").max=addDays(T,A.cfg().bookingWindowDays);$("bDate").value=addDays(T,new Date().getHours()>=12?1:0);
 fillPatients();fillDocs();
 $("bDept").onchange=fillDocs;$("bDoc").onchange=drawSlots;$("bDate").onchange=drawSlots;$("bType").onchange=drawSlots;

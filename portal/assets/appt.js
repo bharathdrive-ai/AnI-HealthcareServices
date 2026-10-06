@@ -18,6 +18,11 @@ const find=id=>all().find(a=>a.id===id);
 const doctor=id=>db.find("staff",id);
 const doctors=dept=>db.get("staff").filter(s=>s.role==="Doctor"&&s.status==="Active"&&(!dept||s.dept===dept));
 const deptCode=id=>db.find("departments",id)?.code||"OPD";
+/* Emergency Care is walk-in only (Casualty, 24x7); every other department runs a bookable OPD. */
+const isOpd=dept=>deptCode(dept)!=="EMR";
+const WALK_IN_MSG="Emergency Care doesn't take appointments. Walk in 24×7 at Casualty, Gate 2.";
+/* Same order as the website's department cards: Emergency first, then the OPDs. */
+const deptsInOrder=({opdOnly=false}={})=>{const L=db.get("departments").filter(d=>d.status==="Active");const opd=L.filter(d=>isOpd(d.id));return opdOnly?opd:[...L.filter(d=>!isOpd(d.id)),...opd];};
 
 /* ---------- Who is acting (staff user or signed-in patient) ---------- */
 const PSESS="jac.patient";
@@ -37,6 +42,7 @@ const leaveOn=(docId,date)=>db.get("leaves").find(l=>l.staff===docId&&l.status==
 
 function availability(docId,date,{allowPast=false}={}){
   const d=doctor(docId);if(!d)return {ok:false,msg:"Choose a doctor."};
+  if(!isOpd(d.dept))return {ok:false,msg:WALK_IN_MSG};
   if(!date)return {ok:false,msg:"Choose a date."};
   if(!allowPast&&date<P.today())return {ok:false,msg:"That date has passed."};
   if(date>P.addDays(P.today(),cfg().bookingWindowDays))return {ok:false,msg:`Bookings open up to ${cfg().bookingWindowDays} days ahead.`};
@@ -234,6 +240,7 @@ function reassign(id,docId){
 /* ---------- Walk-ins and follow-ups ---------- */
 function walkIn({patient:pid,dept,doctor:docId,reason=""}){
   const date=P.today();
+  if((dept&&!isOpd(dept))||(docId&&doctor(docId)&&!isOpd(doctor(docId).dept)))return {ok:false,msg:WALK_IN_MSG};
   const pool=docId?[doctor(docId)].filter(Boolean):doctors(dept);
   const options=pool.filter(d=>availability(d.id,date).ok).map(d=>{const q=queue(d.id,date);return {d,load:q.waiting.length+(q.serving?1:0)};}).sort((x,y)=>x.load-y.load);
   if(!options.length)return {ok:false,msg:"No doctor in this department is consulting today."};
@@ -283,7 +290,7 @@ function pickSlot({title,doc,date,ignore,confirmLabel="Confirm",note="",onConfir
 }
 const logHTML=a=>`<ol class="timeline">${(a.log||[]).slice().reverse().map(l=>`<li><div class="t">${P.esc(l.t)} · ${P.esc(l.by)}</div><div>${P.esc(l.ev)}</div></li>`).join("")||'<li><div class="muted">No history recorded for this older appointment.</div></li>'}</ol>`;
 
-window.Appt={DAYS,toMin,toTime,nowMin,dow,cfg,all,find,doctor,doctors,patient,who,slotGrid,pickSlot,logHTML,
+window.Appt={isOpd,deptsInOrder,WALK_IN_MSG,DAYS,toMin,toTime,nowMin,dow,cfg,all,find,doctor,doctors,patient,who,slotGrid,pickSlot,logHTML,
   deptOpen,weekPattern,holidayOn,leaveOn,availability,slots,nextAvailable,
   fee,feeFor,payStatus,pay,book,reschedule,patientCanChange,cancel,settleRefund,
   checkInWindow,checkIn:checkIn_,queue,position,start,callNext,complete,noShow,skip,reassign,

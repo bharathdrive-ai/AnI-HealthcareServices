@@ -116,11 +116,15 @@ const goTab=i=>{tabIndex=i;document.querySelectorAll("#ppTabs button")[i].click(
 
 /* ---------- Find a doctor ---------- */
 function findDoctor(){
-  const depts=db.get("departments").filter(d=>A.doctors(d.id).length);
+  const depts=A.deptsInOrder().filter(d=>A.doctors(d.id).length);
+  const order=Object.fromEntries(depts.map((d,i)=>[d.id,i]));
   pane().innerHTML=`<div class="toolbar"><input type="search" id="fdQ" placeholder="Search by doctor or speciality" aria-label="Search doctors"><select id="fdDept" style="width:auto" aria-label="Department"><option value="">All departments</option>${opts(depts.map(d=>({value:d.id,label:d.name})))}</select></div><div class="panel-body"><div class="doc-cards" id="fdList"></div></div>`;
   const draw=()=>{const q=document.getElementById("fdQ").value.toLowerCase(),dep=document.getElementById("fdDept").value;
-    const list=A.doctors(dep).filter(d=>!q||`${d.name} ${lookup.dept(d.dept)} ${d.qual}`.toLowerCase().includes(q));
-    document.getElementById("fdList").innerHTML=list.map(d=>{const n=A.nextAvailable(d.id),f=A.feeFor(d.id,"New");
+    const list=A.doctors(dep).filter(d=>!q||`${d.name} ${lookup.dept(d.dept)} ${d.qual}`.toLowerCase().includes(q)).sort((x,y)=>(order[x.dept]??99)-(order[y.dept]??99));
+    document.getElementById("fdList").innerHTML=list.map(d=>{
+      if(!A.isOpd(d.dept))return `<div class="doc-card"><b>${esc(d.name)}</b><span class="muted" style="font-size:.85rem">${esc(d.qual)}</span><span style="font-size:.85rem">${esc(lookup.dept(d.dept))} · ${esc(d.designation)}</span>
+        <span style="font-size:.82rem">${d.exp} years' experience</span><span style="font-size:.85rem;font-weight:600;color:var(--alert)">Walk in 24×7 · Casualty, Gate 2</span></div>`;
+      const n=A.nextAvailable(d.id),f=A.feeFor(d.id,"New");
       return `<div class="doc-card"><b>${esc(d.name)}</b><span class="muted" style="font-size:.85rem">${esc(d.qual)}</span><span style="font-size:.85rem">${esc(lookup.dept(d.dept))} · ${esc(d.designation)}</span>
         <span style="font-size:.82rem">${d.exp} years' experience · fee <span class="fee">${feeLabel(f)}</span></span>
         <span style="font-size:.82rem" class="${n?"":"muted"}">${n?`Next available: <b>${fmtDate(n.date)} ${n.slot}</b>`:"No free slots in the next few weeks"}</span>
@@ -132,7 +136,7 @@ function findDoctor(){
 
 /* ---------- Book appointment ---------- */
 function bookTab(){
-  const depts=db.get("departments").filter(d=>A.doctors(d.id).length);
+  const depts=A.deptsInOrder({opdOnly:true}).filter(d=>A.doctors(d.id).length);
   let chosen=null;
   pane().innerHTML=`<div class="panel-body grid-2 split-7-5">
     <div style="display:grid;gap:.9rem;align-content:start"><div class="form-grid">
