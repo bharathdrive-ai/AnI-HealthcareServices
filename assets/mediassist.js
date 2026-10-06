@@ -11,7 +11,7 @@ const SITE={
   portal:"patient/index.html",
 };
 const SYN={ // everyday words → department code; earlier entries win (e.g. a child with fever → Paediatrics)
-  EMR:["emergency","casualty","accident","trauma","ambulance","urgent"],
+  EMR:["emergency","casualty","accident","trauma","ambulance"],
   PED:["paediatrics","pediatrics","paediatric","pediatric","child","children","kid","kids","baby","infant","vaccination","vaccine"],
   OBG:["obstetrics","gynaecology","gynecology","gynaec","gynec","obg","pregnancy","pregnant","antenatal","delivery","menstrual","periods","fertility","menopause"],
   CAR:["cardiology","cardiologist","heart","cardiac","ecg","echo","angiography","chest pain"],
@@ -30,14 +30,14 @@ const NOT_OFFERED=[
   {name:"Dental",words:["dental","dentist","teeth","tooth","toothache","gums"]},
   {name:"Psychiatry (mental health)",words:["psychiatry","psychiatrist","mental health","depression","anxiety","therapist"],mental:true},
 ];
-const RED_FLAGS=["chest pain","can't breathe","cannot breathe","breathless","unconscious","fainted","bleeding heavily","heavy bleeding","accident","stroke","seizure","fits","suicide","poison","snake bite","severe pain","heart attack"];
+const RED_FLAGS=["chest pain","can't breathe","cannot breathe","breathless","unconscious","fainted","bleeding heavily","heavy bleeding","accident","stroke","seizure","fits","suicide","severe pain","heart attack"];
 
 /* ---------- Data (loaded on first open) ---------- */
 let ready=null;
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=()=>rej(new Error(src));document.head.appendChild(s);});}
 function ensureData(){
   if(ready)return ready;
-  ready=(async()=>{if(!window.SEED)await loadScript("portal/assets/data.js");if(!window.Portal)await loadScript("portal/assets/portal.js");if(!window.Appt)await loadScript("portal/assets/appt.js");})();
+  ready=(async()=>{if(!window.SEED)await loadScript("portal/assets/data.js");if(!window.Portal)await loadScript("portal/assets/portal.js");if(!window.Appt)await loadScript("portal/assets/appt.js");if(!window.FAQ_KB)await loadScript("assets/faq-kb.js");})();
   return ready;
 }
 const P=()=>window.Portal, A=()=>window.Appt, db=()=>window.Portal.db;
@@ -88,7 +88,7 @@ function pickYear(day,mon,yr){
 const link=(href,text)=>`<a href="${href}">${esc(text)}</a>`;
 const portalLink=()=>link(SITE.portal,"Patient Portal");
 const say=(html,chips=[])=>({html,chips});
-const DEFAULT_CHIPS=["Book an appointment","OPD timings","Find a doctor","Emergency","Visiting hours","More questions"];
+const DEFAULT_CHIPS=["Book an appointment","OPD timings","Find a doctor","Emergency","Visiting hours","Browse all FAQs"];
 
 function emergency(){return say(`<b>If this is an emergency, call 108 now</b> or come straight to <b>Casualty, Gate 2</b> — open 24×7.<br>Casualty desk: <b>${SITE.casualty}</b>`,["Where is the hospital?","OPD timings"]);}
 function selfHarm(){return say(`I'm really sorry you're going through this. You don't have to face it alone.<br><b>Call 108</b> or come to Casualty, Gate 2, any time — we're open 24×7.<br>You can also call <b>Tele-MANAS on 14416</b>, India's free 24×7 mental health helpline.`,["Contact"]);}
@@ -179,91 +179,87 @@ function symptomHelp(q,dept){
   const d=dept||deptByCode("MED");
   return say(`I can't give medical advice, but for this ${an(d.name)} <b>${esc(d.name)}</b> doctor is a good place to start.${A().isOpd(d.id)?`<br>${slotsHTML(A().doctors(d.id).map(x=>({x,n:A().nextAvailable(x.id)})).filter(o=>o.n).sort((a,b)=>(a.n.date+a.n.slot).localeCompare(b.n.date+b.n.slot))[0]?.x||A().doctors(d.id)[0])}`:""}<br><br>If symptoms are severe or sudden, call <b>108</b> or come to Casualty, Gate 2.`,[`Doctors in ${d.name}`,"Emergency"]);
 }
-/* ---------- Frequently asked questions ---------- */
-const FAQ=[
-  {id:"inpatient",label:"Hospital admission",
-   test:q=>has(q,["admit","admitted","admission process","hospital admission","inpatient","in-patient","get a bed","bed available","room charges","room rent","private room","ward charges"])&&!has(q,["mbbs","neet","course","student","college","md ","ms ","nursing course","apply"]),
-   html:()=>`<b>Hospital admission</b><ul><li>Planned admissions are arranged by your treating doctor, who gives an admission note to take to the <b>Admission desk, Block A ground floor</b>.</li><li>For urgent care, come to <b>Casualty, Gate 2</b> (24×7); the team will admit you if needed.</li><li>We have general wards, ICUs and private rooms. The Admission desk will explain room options and estimated charges.</li><li>Bring photo ID, your doctor's note, earlier reports and your insurance card.</li></ul>Admission desk: <b>${SITE.opd}</b>.`,chips:["What should I bring?","Insurance","Visiting hours"]},
-  {id:"bring",label:"What to bring",
-   test:q=>has(q,["what to bring","what should i bring","what do i bring","documents","document","id proof","carry","papers required"]),
-   html:()=>`For your OPD visit, please bring:<ul><li>Photo ID (Aadhaar, PAN, driving licence or passport)</li><li>Your UHID or booking reference, if you have one</li><li>Earlier reports, scans and prescriptions</li><li>The medicines you take now, or a list of them</li><li>Insurance or scheme card, if you'd like cashless care</li></ul>Please arrive 15 minutes early.`,chips:["How do I book?","Insurance","OPD timings"]},
-  {id:"reports",label:"Lab reports",
-   test:q=>has(q,["report","reports","test result","test results","results"])&&!has(q,["slot","slots","appointment"]),
-   html:()=>`<b>Lab and scan reports</b><ul><li>Most blood test reports are ready the same day; you'll get an SMS when yours is ready.</li><li>Collect them at the <b>Lab counter, Block D</b> (07:00–20:00) with your UHID or bill.</li><li>Scan reports (X-ray, ultrasound, CT, MRI) come from <b>Radiology, Block D2</b>, usually the same day.</li></ul>`,chips:["Home sample collection","Lab timings"]},
-  {id:"homecollect",label:"Home sample collection",
-   test:q=>has(q,["home collection","home sample","sample from home","collect sample","collect blood","at home","home visit"]),
-   html:()=>`Yes — we offer <b>home sample collection</b> for blood tests, Monday to Saturday, 7:00–11:00 AM. Call the OPD desk on <b>${SITE.opd}</b> a day ahead to book a slot. Reports are shared by SMS and can be collected at the Lab counter, Block D.`,chips:["Lab reports","Health check-up packages"]},
-  {id:"checkup",label:"Health check-up packages",
-   test:q=>has(q,["health check","health checkup","health check-up","full body","master check","checkup package","check-up package","health package","executive check"]),
-   html:()=>`<b>Health check-up packages</b> run at Pathology & Laboratory, Block D, Monday to Saturday from 7:00 AM (please come fasting):<ul><li><b>Basic</b> — blood count, sugar, cholesterol, kidney and liver tests</li><li><b>Executive</b> — Basic plus thyroid, ECG, chest X-ray and a doctor consultation</li><li><b>Cardiac</b> — Executive plus echo and a cardiologist review</li></ul>Call <b>${SITE.opd}</b> to book and for current prices.`,chips:["Home sample collection","Lab reports"]},
-  {id:"vaccination",label:"Vaccination",
-   test:q=>has(q,["vaccination","vaccine","vaccines","immunisation","immunization","injection for baby","polio"]),
-   html:()=>`Our <b>vaccination clinic</b> is part of Paediatrics, <b>Block C2</b>, Monday to Saturday during OPD hours (08:00–13:00 registration). Please bring your child's vaccination card. Adult vaccines are available through General Medicine.`,chips:["Paediatrics slots tomorrow","Doctors in Paediatrics"]},
-  {id:"records",label:"Medical records",
-   test:q=>has(q,["medical record","medical records","discharge summary","case sheet","copy of my","records copy","old records"]),
-   html:()=>`For copies of medical records or a discharge summary, apply at the <b>Medical Records Department, Block A first floor</b>, Monday to Saturday, 9:00 AM–4:00 PM. Bring photo ID (and an authorisation letter if you're collecting for someone else). Copies are usually ready in <b>3 working days</b>.`,chips:["Contact","Visiting hours"]},
-  {id:"payment",label:"Payment methods",
-   test:q=>has(q,["payment method","payment methods","pay by","pay with","upi","credit card","debit card","card accepted","cash","gpay","paytm","phonepe","online payment"]),
-   html:()=>`We accept <b>cash, UPI, and debit and credit cards</b> at all counters. Consultation fees can also be paid online when you book in the ${portalLink()}. Cashless care is available under major insurance and government schemes.`,chips:["Fees","Insurance"]},
-  {id:"parking",label:"Parking",
-   test:q=>has(q,["parking","park my","car park","two wheeler","bike parking"]),
-   html:()=>`Yes — there's <b>free parking for patients and visitors</b> near <b>Gate 1</b> for cars and two-wheelers. The area in front of <b>Gate 2</b> is kept clear for ambulances and Casualty drop-offs.`,chips:["Where is the hospital?","Wheelchair access"]},
-  {id:"access",label:"Wheelchair access",
-   test:q=>has(q,["wheelchair","wheel chair","disabled","disability","accessible","accessibility","ramp","lift","elevator","stretcher"]),
-   html:()=>`Every block has <b>ramps and lifts</b>. <b>Wheelchairs</b> are available free at Gate 1 and Gate 2 — ask the security desk, and a staff member can accompany you to your OPD.`,chips:["Parking","Visiting hours"]},
-  {id:"canteen",label:"Canteen",
-   test:q=>has(q,["canteen","cafeteria","food","cafe","coffee","restaurant","eat","snacks"]),
-   html:()=>`The <b>cafeteria</b> is on the ground floor of <b>Block A</b>, open 7:00 AM–10:00 PM, with vegetarian meals, snacks and drinks. Inpatients receive meals planned by our dietitians.`,chips:["Visiting hours","Parking"]},
-  {id:"video",label:"Video consultation",
-   test:q=>has(q,["video consultation","online consultation","teleconsultation","tele consultation","telemedicine","video call","consult online","virtual consultation"]),
-   html:()=>`At present our consultations are <b>in person</b> at the OPD. For quick follow-up questions about an existing treatment, please call the OPD desk on <b>${SITE.opd}</b> and your doctor's team will advise.`,chips:["Book an appointment","Reschedule or cancel"]},
-  {id:"languages",label:"Languages",
-   test:q=>has(q,["language","languages","kannada","hindi","tamil","telugu","malayalam","which language","languages spoken"]),
-   html:()=>`Our doctors and staff speak <b>English, Kannada and Hindi</b>, and many also speak <b>Tamil, Telugu or Malayalam</b>. Let the OPD desk know your preferred language when you register.`,chips:["Find a doctor","Contact"]},
-  {id:"feedback",label:"Feedback and complaints",
-   test:q=>has(q,["feedback","complaint","complain","suggestion","grievance","not happy","bad experience","compliment"]),
-   html:()=>`We'd like to hear from you. Speak to the <b>Patient Relations desk, Block A ground floor</b> (9:00 AM–6:00 PM), or call <b>${SITE.opd}</b>. Every complaint is logged and you'll get a response within 3 working days.`,chips:["Contact"]},
-];
-function faqMenu(){return say(`Here are some things people often ask. Tap one, or type your own question:`,["Book an appointment","What should I bring?","Lab reports","Health check-up packages","Hospital admission","Payment methods","Parking","Wheelchair access","Canteen","Visiting hours"]);}
-function fallback(){return say(`Sorry, I'm not sure about that yet. I can help with appointments and free slots, doctors, OPD days, fees, reports, admissions, visiting hours, emergency contacts and our programmes. For anything else, call the OPD desk on <b>${SITE.opd}</b>.`,["More questions",...DEFAULT_CHIPS.slice(0,4)]);}
+/* ---------- FAQ knowledge base (assets/faq-kb.js, 100+ questions) ---------- */
+const STOP=new Set("a an the is are am i me my you your we our to of in on at for and or with do does did can could will would should be been how what when where which who whom why there this that it its any have has get got please tell about want need if im like just also some really very".split(" "));
+const SPELL=[[/gynec/g,"gynaec"],[/pediatr/g,"paediatr"],[/orthoped/g,"orthopaed"],[/anesthe/g,"anaesthe"],[/hospitalis/g,"hospitaliz"]];
+const stem=w=>{SPELL.forEach(([a,b])=>{w=w.replace(a,b);});return w.length>4?w.replace(/(ing|ed|es|s)$/,""):w;};
+const toks=t=>norm(t).trim().split(" ").filter(w=>w.length>1&&!STOP.has(w)).map(stem);
+let KB=null,IDF=null;
+function kb(){
+  if(KB||!window.FAQ_KB)return KB;
+  KB=window.FAQ_KB.map(e=>({...e,kn:e.k.map(norm),qt:toks(e.q),bag:new Set(toks(e.q+" "+e.k.join(" ")))}));
+  const df={};KB.forEach(e=>e.bag.forEach(t=>{df[t]=(df[t]||0)+1;}));
+  const N=KB.length;IDF={};Object.entries(df).forEach(([t,n])=>{IDF[t]=Math.log(N/n)/Math.log(N);}); // 0 (everywhere) … 1 (one FAQ)
+  return KB;
+}
+const CATS=()=>[...new Set((kb()||[]).map(e=>e.cat))];
+function kbMatch(q){
+  const K=kb();if(!K)return null;
+  const qt=new Set(toks(q));let best=null,bs=0;
+  const hit=kn=>q.includes(kn)||q.includes(kn.slice(0,-1)+"s ")||q.includes(kn.slice(0,-1)+"es "); // also matches plurals
+  for(const e of K){
+    let sc=0,longest=0;
+    for(const kn of e.kn){if(hit(kn)){const n=kn.trim().split(" ").length;sc+=1.5+n;longest=Math.max(longest,n);}}
+    sc+=longest*0.1;                                                   // prefer the more specific phrase on a tie
+    qt.forEach(t=>{if(e.bag.has(t))sc+=2.2*(IDF[t]??0);});            // distinctive shared words count most
+    if(norm(e.q)===q)sc+=20;                                           // the exact question (e.g. a tapped FAQ button)
+    if(sc>bs){bs=sc;best=e;}
+  }
+  return best&&bs>=2.5?{e:best,score:bs}:null; // one shared word alone is never enough
+}
+const DYN={
+  howToBook:()=>howToBook(),changes:()=>changes(),checkin:()=>checkin(),opd:()=>opdTimings(null),fees:()=>fees(),
+  insurance:()=>insurance(),depts:()=>listDepts(),emergency:()=>emergency(),visiting:()=>visiting(),contact:()=>contact(),
+  facilities:()=>facilities(),holidays:()=>holidays(" "),programmes:()=>programmes(),apply:()=>apply(),
+  labTimings:()=>say(deptDays(deptByCode("LAB"))+" Blood samples for fasting tests are best given before 10:00 AM.",["How do I get my test reports?","Do you offer home sample collection?"]),
+  bookingWindow:()=>say(`You can book up to <b>${A().cfg().bookingWindowDays} days ahead</b> in the ${portalLink()}. New dates open every day.`,["How do I book an appointment?","Can I get an appointment today?"]),
+  followupFee:()=>{const c=A().cfg();return say(`A follow-up with the same doctor within <b>${c.followUpFreeDays} days</b> of your visit costs <b>${inr(c.fees.followUp)}</b>. After that, the regular consultation fee applies. You can book follow-ups from <b>History</b> in the ${portalLink()}.`,["How much is the consultation fee?","How do I book an appointment?"]);},
+};
+function fill(html){return html.replace(/\{OPD\}/g,SITE.opd).replace(/\{CASUALTY\}/g,SITE.casualty).replace(/\{ADM_PHONE\}/g,SITE.admissionsPhone).replace(/\{ADM_EMAIL\}/g,SITE.admissionsEmail).replace(/\{PORTAL\}/g,portalLink());}
+function kbAnswer(e){
+  let r=e.a.startsWith("@")&&DYN[e.a.slice(1)]?DYN[e.a.slice(1)]():say(fill(e.a));
+  const related=(kb()||[]).filter(x=>x.cat===e.cat&&x.id!==e.id).slice(0,3).map(x=>x.q);
+  r={...r,id:e.id,chips:r.chips&&r.chips.length?r.chips:related};
+  return r;
+}
+function faqMenu(){return say(`I can answer <b>${(kb()||[]).length} common questions</b>. Pick a topic, or just type your question:`,CATS());}
+function faqCategory(cat){
+  const L=(kb()||[]).filter(e=>e.cat===cat);
+  return say(`Common questions about <b>${esc(cat)}</b>:`,L.map(e=>e.q));
+}
+function fallback(){return say(`Sorry, I'm not sure about that yet. I can help with appointments and free slots, doctors, OPD days, fees, reports, admissions, visiting hours, emergency contacts and our programmes. For anything else, call the OPD desk on <b>${SITE.opd}</b>.`,["Browse all FAQs",...DEFAULT_CHIPS.slice(0,4)]);}
 
 function answer(text){
   const q=norm(text);
+  const m=kbMatch(q),strong=m&&m.score>=3.6;
+  // 1. Safety
   if(has(q,SELF_HARM))return selfHarm();
-  if(has(q,RED_FLAGS)&&!has(q,["cardiology","doctor","slot","book","appointment"]))return emergency();
-  {const x=NOT_OFFERED.find(n=>has(q,n.words));if(x&&!findDept(q))return notOffered(x);}
+  if(has(q,RED_FLAGS)&&!has(q,["cardiology","doctor","slot","book","appointment"]))return m&&m.score>=4&&m.e.cat==="Emergency"?kbAnswer(m.e):emergency();
+  if(has(q,["emergency","ambulance","casualty","108"]))return m&&m.score>=4&&m.e.cat==="Emergency"?kbAnswer(m.e):emergency();
+  {const x=NOT_OFFERED.find(n=>has(q,n.words));if(x&&!findDept(q)&&!(strong&&m.e.id==="not-offered"))return notOffered(x);}
+  // 2. Small talk and the FAQ menu
   if(has(q,["hi","hello","hey","namaste","good morning","good afternoon","good evening"])&&q.trim().split(" ").length<=4)return say("Hello! How can I help you today?",DEFAULT_CHIPS);
   if(has(q,["thanks","thank you","thank","ok thanks"]))return say("You're welcome. Is there anything else I can help with?",DEFAULT_CHIPS);
   if(has(q,["bye","goodbye"]))return say("Take care. I'm here whenever you need help.",[]);
-  if(has(q,["emergency","ambulance","casualty","108","urgent"]))return emergency();
-  if(has(q,["help","faq","faqs","what can you do","what can i ask","options","menu","more questions"])&&q.trim().split(" ").length<=5)return faqMenu();
-  {const f=FAQ.find(x=>x.test(q));if(f)return say(f.html(),f.chips);}
+  if(has(q,["help","faq","faqs","what can you do","what can i ask","options","menu","more questions","topics","browse all faqs","all faqs"])&&q.trim().split(" ").length<=5)return faqMenu();
+  {const c=CATS().find(c=>norm(c)===q);if(c)return faqCategory(c);}
+  if(m&&norm(m.e.q)===q)return kbAnswer(m.e); // a tapped FAQ question
+  // 3. Live data: doctors, departments, dates, free slots
   const doc=findDoctor(q),dept=findDept(q),date=findDate(q);
-  const asksSlots=has(q,["slot","slots","available","availability","free","appointment","appointments","book","booking","time","when can","checkup","check up","consult","consultation","see a","visit"]);
-  if(has(q,["reschedule","cancel","cancellation","refund","change my"]))return changes();
-  if(has(q,["check in","check-in","checkin","token","queue","waiting","wait time"]))return checkin();
+  const slotWords=has(q,["slot","slots","availability","free slot","free slots","free time"]);
   if(doc)return doctorInfo(doc,date);
   if(dept&&has(q,["head","hod","in charge","incharge","chief"]))return deptHead(dept);
-  if(dept&&date&&has(q,["open","run","runs","working","available on","is there opd","opd on"])&&!has(q,["slot","slots"]))return deptOnDate(dept,date);
-  if(dept&&date)return deptSlots(dept,date);
-  if(has(q,["how do i book","how to book","how can i book","book an appointment","booking process","make an appointment"])&&!dept)return howToBook();
-  if(dept&&asksSlots&&!has(q,["days","which day","what days","open on","timings"]))return deptSlots(dept,date);
-  if(has(q,["fee","fees","cost","charge","charges","price","how much"]))return fees();
-  if(has(q,["insurance","cashless","ayushman","cghs","esi","scheme","claim"]))return insurance();
-  if(has(q,["pharmacy","medical store","chemist","medicines available"]))return say(`Yes — our <b>pharmacy is open 24 hours</b>, on the ground floor of Block A.`,["Visiting hours","Contact"]);
-  if(has(q,["blood bank","donate blood","blood donation"]))return say(`The <b>blood bank is open 24 hours</b>. Donors are welcome from 9:00 AM to 5:00 PM.`,["Visiting hours","Contact"]);
-  if(has(q,["visiting","visitor","visit hours","attendant","icu visit","pharmacy","medical store","blood bank","donate blood"]))return visiting();
-  if(has(q,["holiday","holidays","closed on","open on sunday","deepavali","diwali","christmas","independence"]))return holidays(q);
-  if(has(q,["address","location","where is","located","directions","contact","phone","number","email","reach"]))return contact();
-  if(has(q,["how to apply","apply","admission","admissions","neet","counselling"]))return apply();
-  if(has(q,["mbbs","course","courses","programme","programmes","program","programs","nursing","md ","ms ","institute","college","study"]))return programmes();
-  if(has(q,["beds","icu beds","facilities","operation theatre","theatres","about the hospital","about you","about hospital"]))return facilities();
-  if(has(q,["department","departments","speciality","specialities","specialty","specialties","services"])&&!dept)return listDepts();
-  if(dept&&has(q,["doctor","doctors","who","specialist","head","consultant"]))return doctorsIn(dept);
-  if(has(q,["lab timings","lab timing","laboratory timings"]))return say(deptDays(deptByCode("LAB")),["Lab reports","Home sample collection"]);
-  if(has(q,["opd","timing","timings","hours","open","closed","days","registration"])||(dept&&has(q,["days","open"])))return opdTimings(dept);
+  if(dept&&date&&has(q,["open","run","runs","working","available on","is there opd","opd on"])&&!slotWords)return deptOnDate(dept,date);
+  if(dept&&(date||slotWords))return deptSlots(dept,date);
+  // 4. FAQ knowledge base
+  if(strong)return kbAnswer(m.e);
+  if(dept&&has(q,["doctor","doctors","who","specialist","consultant"]))return doctorsIn(dept);
+  if(dept&&has(q,["days","which day","what days","open on","timings","timing"]))return opdTimings(dept);
+  if(dept&&has(q,["appointment","appointments","checkup","check up","consult","consultation","see a","visit","book"]))return deptSlots(dept,date);
+  if(m)return kbAnswer(m.e);
+  // 5. General fallbacks
   if(has(q,["find a doctor","find doctor","doctor","doctors"]))return say(`Which speciality do you need? For example "heart doctor", "doctors in ENT" or a doctor's name. You can also browse ${link("#doctors","Find a doctor")}.`,["Doctors in Cardiology","Doctors in Paediatrics","Doctors in Orthopaedics"]);
-  if(asksSlots&&!dept)return say(`Which department or doctor would you like? For example "cardiology slots tomorrow" or "next slot with Dr. Meera Iyer".`,["General Medicine slots today","Paediatrics slots tomorrow","How do I book?"]);
+  if(has(q,["appointment","appointments","slot","slots","book","booking"]))return say(`Which department or doctor would you like? For example "cardiology slots tomorrow" or "next slot with Dr. Meera Iyer".`,["General Medicine slots today","Paediatrics slots tomorrow","How do I book an appointment?"]);
   if(dept)return symptomHelp(q,dept);
   if(has(q,["pain","fever","sick","ill","hurt","symptom","symptoms","problem","suffering"]))return symptomHelp(q,null);
   return fallback();
