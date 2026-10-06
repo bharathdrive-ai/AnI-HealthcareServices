@@ -15,7 +15,7 @@ const departments=[
   ["DEP0007","Neurology","NEU","B2",3,"Dr. Vikram Singh"],
   ["DEP0008","ENT","ENT","A4",3,"Dr. Priya Das"],
   ["DEP0009","Ophthalmology","OPH","A4",3,"Dr. Kavya Menon"],
-  ["DEP0010","Emergency Medicine","EMR","G1",7,"Dr. Naveen Reddy"],
+  ["DEP0010","Emergency Care","EMR","G1",7,"Dr. Naveen Reddy"],
   ["DEP0011","Pathology & Laboratory","LAB","D1",4,"Dr. Sunita Rao"],
   ["DEP0012","Radiology","RAD","D2",4,"Dr. Imran Khan"],
 ].map(([id,name,code,block,floor,head])=>({id,name,code,block,floor,head,status:"Active"}));
@@ -294,7 +294,7 @@ const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";
 /* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
-window.DATA_VERSION="2026-10-06-appointments-2";
+window.DATA_VERSION="2026-10-06-emergency-care";
 /* ---------- Appointment management ---------- */
 const slotConfig={id:"CFG",slotMinutes:15,
   sessions:{AM:{start:"09:00",end:"13:00"},PM:{start:"14:00",end:"16:00"}},

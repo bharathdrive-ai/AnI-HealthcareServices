@@ -146,6 +146,10 @@ const auth={
       Object.entries(sp.perms).forEach(([m,v])=>{if(!r.perms[m]){r.perms[m]={...v};changed=true;}});});
     if(changed){try{localStorage.setItem(PREFIX+"permissions",JSON.stringify(stored));}catch(e){}delete mem.permissions;}
   })();
+  /* Department renamed: Emergency Medicine → Emergency Care (only if the saved name is still the old one). */
+  (function(){let L=null;try{L=JSON.parse(localStorage.getItem(PREFIX+"departments"));}catch(e){}
+    const d=Array.isArray(L)&&L.find(x=>x.id==="DEP0010"&&x.name==="Emergency Medicine");
+    if(d){d.name="Emergency Care";try{localStorage.setItem(PREFIX+"departments",JSON.stringify(L));}catch(e){}delete mem.departments;}})();
   /* Email domain moved from jac.example to the AnI-HealthcareServices name: update saved copies in place. */
   ["staff","users","hospital","notifLog"].forEach(k=>{
     let raw=null;try{raw=localStorage.getItem(PREFIX+k);}catch(e){}
