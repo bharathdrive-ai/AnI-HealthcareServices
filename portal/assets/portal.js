@@ -146,6 +146,11 @@ const auth={
       Object.entries(sp.perms).forEach(([m,v])=>{if(!r.perms[m]){r.perms[m]={...v};changed=true;}});});
     if(changed){try{localStorage.setItem(PREFIX+"permissions",JSON.stringify(stored));}catch(e){}delete mem.permissions;}
   })();
+  /* Department heads titled "Professor & Head" (only where the saved title is still the old one). */
+  (function(){let L=null;try{L=JSON.parse(localStorage.getItem(PREFIX+"staff"));}catch(e){}if(!Array.isArray(L))return;
+    const OLD={STF0008:"Professor",STF0002:"Professor",STF0005:"Associate Professor",STF0003:"Associate Professor",STF0006:"Assistant Professor",STF0009:"Assistant Professor",STF0007:"Associate Professor",STF0010:"Associate Professor"};let ch=false;
+    L.forEach(x=>{if(OLD[x.id]&&x.designation===OLD[x.id]){x.designation="Professor & Head";ch=true;}});
+    if(ch){try{localStorage.setItem(PREFIX+"staff",JSON.stringify(L));}catch(e){}delete mem.staff;}})();
   /* Founding year corrected to 1985 (only if the saved profile still has the old placeholder). */
   (function(){let h=null;try{h=JSON.parse(localStorage.getItem(PREFIX+"hospital"));}catch(e){}
     if(h&&h.established==="1987"){h.established="1985";try{localStorage.setItem(PREFIX+"hospital",JSON.stringify(h));}catch(e){}delete mem.hospital;}})();

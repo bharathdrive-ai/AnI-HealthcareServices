@@ -46,15 +46,15 @@ wards.forEach(w=>{const n=Math.min(w.beds,24);for(let i=1;i<=n;i++){beds.push({i
 
 const staff=[
   ["STF0001","Dr. Meera Iyer","Doctor","DEP0003","MD, DM (Cardiology)","Professor & Head","Permanent",22,"2004-07-01"],
-  ["STF0002","Dr. Arjun Rao","Doctor","DEP0004","MS (Ortho)","Professor","Permanent",18,"2008-06-15"],
-  ["STF0003","Dr. Fatima Sheikh","Doctor","DEP0006","MD (Paediatrics)","Associate Professor","Permanent",12,"2014-01-10"],
+  ["STF0002","Dr. Arjun Rao","Doctor","DEP0004","MS (Ortho)","Professor & Head","Permanent",18,"2008-06-15"],
+  ["STF0003","Dr. Fatima Sheikh","Doctor","DEP0006","MD (Paediatrics)","Professor & Head","Permanent",12,"2014-01-10"],
   ["STF0004","Dr. Rohan Kulkarni","Doctor","DEP0001","MD (General Medicine)","Professor & Head","Permanent",25,"2001-03-01"],
-  ["STF0005","Dr. Anjali Nair","Doctor","DEP0005","MS, DNB (OBG)","Associate Professor","Permanent",14,"2012-08-20"],
-  ["STF0006","Dr. Vikram Singh","Doctor","DEP0007","MCh (Neurosurgery)","Assistant Professor","Permanent",9,"2017-11-01"],
-  ["STF0007","Dr. Kavya Menon","Doctor","DEP0009","MS (Ophthalmology)","Associate Professor","Permanent",11,"2015-05-04"],
-  ["STF0008","Dr. Sameer Joshi","Doctor","DEP0002","MS (General Surgery), FMAS","Professor","Permanent",20,"2006-02-14"],
-  ["STF0009","Dr. Priya Das","Doctor","DEP0008","MS (ENT)","Assistant Professor","Contract",7,"2019-09-09"],
-  ["STF0010","Dr. Naveen Reddy","Doctor","DEP0010","MD (Emergency Medicine)","Associate Professor","Permanent",10,"2016-04-01"],
+  ["STF0005","Dr. Anjali Nair","Doctor","DEP0005","MS, DNB (OBG)","Professor & Head","Permanent",14,"2012-08-20"],
+  ["STF0006","Dr. Vikram Singh","Doctor","DEP0007","MCh (Neurosurgery)","Professor & Head","Permanent",9,"2017-11-01"],
+  ["STF0007","Dr. Kavya Menon","Doctor","DEP0009","MS (Ophthalmology)","Professor & Head","Permanent",11,"2015-05-04"],
+  ["STF0008","Dr. Sameer Joshi","Doctor","DEP0002","MS (General Surgery), FMAS","Professor & Head","Permanent",20,"2006-02-14"],
+  ["STF0009","Dr. Priya Das","Doctor","DEP0008","MS (ENT)","Professor & Head","Contract",7,"2019-09-09"],
+  ["STF0010","Dr. Naveen Reddy","Doctor","DEP0010","MD (Emergency Medicine)","Professor & Head","Permanent",10,"2016-04-01"],
   ["STF0011","Sr. Lakshmi Pillai","Nurse","DEP0001","B.Sc Nursing","Nursing Superintendent","Permanent",24,"2002-01-07"],
   ["STF0012","Sr. Deepa Thomas","Nurse","DEP0003","M.Sc Nursing","Ward Sister","Permanent",15,"2011-06-01"],
   ["STF0013","Rahul Verma","Nurse","DEP0010","GNM","Staff Nurse","Permanent",6,"2020-02-17"],
@@ -296,7 +296,7 @@ const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";
 /* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
-window.DATA_VERSION="2026-10-06-est-1985";
+window.DATA_VERSION="2026-10-06-heads";
 /* ---------- Appointment management ---------- */
 const slotConfig={id:"CFG",slotMinutes:15,
   sessions:{AM:{start:"09:00",end:"13:00"},PM:{start:"14:00",end:"16:00"}},
