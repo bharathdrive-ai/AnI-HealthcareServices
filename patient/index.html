@@ -134,7 +134,7 @@ function findDoctor(){
 function bookTab(){
   const depts=db.get("departments").filter(d=>A.doctors(d.id).length);
   let chosen=null;
-  pane().innerHTML=`<div class="panel-body grid-2" style="grid-template-columns:minmax(0,7fr) minmax(0,5fr)">
+  pane().innerHTML=`<div class="panel-body grid-2 split-7-5">
     <div style="display:grid;gap:.9rem;align-content:start"><div class="form-grid">
       <div class="field"><label for="bDept">Department</label><select id="bDept">${opts(depts.map(d=>({value:d.id,label:d.name})),bookPre.dept)}</select></div>
       <div class="field"><label for="bDoc">Doctor</label><select id="bDoc"></select></div>

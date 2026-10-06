@@ -104,7 +104,7 @@ function todayTab(){
   const q=A.queue(docId);
   const list=A.all().filter(a=>a.doctor===docId&&a.date===T).sort((x,y)=>x.slot.localeCompare(y.slot));
   const s=q.serving;
-  pane.innerHTML=`<div class="panel-body grid-2" style="grid-template-columns:minmax(0,5fr) minmax(0,7fr)">
+  pane.innerHTML=`<div class="panel-body grid-2 split-5-7">
     <div style="display:grid;gap:.8rem;align-content:start">
       <h3 style="font-size:.95rem">Patient queue</h3>
       <div class="qcard ${s?"now":""}">

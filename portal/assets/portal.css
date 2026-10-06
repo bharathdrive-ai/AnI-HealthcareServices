@@ -290,3 +290,19 @@ button.who:hover{border-color:var(--line)}
 .notice{padding:.65rem .8rem;border-radius:6px;font-size:.85rem;background:var(--alert-soft);color:var(--alert)}
 .notice.info{background:var(--info-soft);color:var(--info)}
 .notice.ok{background:var(--ok-soft);color:var(--ok)}
+
+/* Uneven two-column layouts that stack on narrow screens (inline grid columns would override .grid-2's breakpoint) */
+.split-7-5{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.split-5-7{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}
+@media (max-width:900px){.split-7-5,.split-5-7{grid-template-columns:1fr}}
+
+/* Phones: comfortable touch targets and readable small labels */
+@media (max-width:700px){
+  .btn{min-height:38px}
+  .btn.sm{min-height:34px;padding:.35rem .7rem}
+  .btn.sm.link{padding-inline:.5rem}
+  .day .ap{min-height:40px}
+  .pw-wrap button{min-height:32px}
+  .slot{min-height:38px}
+}
+button.bed small{font-size:11px}
