@@ -112,7 +112,7 @@ for(let i=0;i<34;i++){
   const day=i<14?0:(i<22?-(1+i%5):1+i%6);
   const doc=docs[i%docs.length];
   let status=day>0?"Booked":(day<0?(i%6===0?"No Show":"Completed"):apStatus[i%apStatus.length]);
-  appointments.push({id:`APT${String(i+1).padStart(4,"0")}`,patient:patients[(i*3)%patients.length].id,doctor:doc.id,dept:doc.dept,date:D(day),slot:times[(i*5)%times.length],type:i%5===0?"Follow-up":"New",status,reason:["Fever","Chest pain review","Knee pain","Antenatal visit","Child vaccination","Headache","Ear pain","Blurred vision","Post-op review"][i%9]});
+  appointments.push({id:`APT${String(i+1).padStart(4,"0")}`,patient:patients[(i*3)%patients.length].id,doctor:doc.id,dept:doc.dept,date:D(day),slot:times[(i*5)%times.length],source:i%4===0?"Online":"Front desk",pay:(day<0&&i%6!==0)||i%3===0?"Paid":"Unpaid",type:i%5===0?"Follow-up":"New",status,reason:["Fever","Chest pain review","Knee pain","Antenatal visit","Child vaccination","Headache","Ear pain","Blurred vision","Post-op review"][i%9]});
 }
 
 const services=[
@@ -240,13 +240,13 @@ const roles=[
   {id:"ROL0005",name:"Pharmacist",desc:"Pharmacy, inventory",users:2},
   {id:"ROL0006",name:"HR",desc:"Staff, roster, leave, holidays",users:1},
 ];
-const MODULES=["Dashboard","Administration","Hospital Master","Appointments","Patients","Medical Services","Staff","Roster & Leave","Holidays","Inventory","Pharmacy","Reports","Notifications"];
+const MODULES=["Dashboard","Administration","Hospital Master","Appointments","Doctor Portal","Appointment Admin","Patients","Medical Services","Staff","Roster & Leave","Holidays","Inventory","Pharmacy","Reports","Notifications"];
 const P=(v,a,e,d)=>({view:v,add:a,edit:e,del:d});
 const permMap={
   ROL0001:()=>P(1,1,1,1),
-  ROL0002:m=>["Dashboard","Appointments","Patients"].includes(m)?P(1,1,1,0):(["Medical Services","Holidays"].includes(m)?P(1,0,0,0):P(0,0,0,0)),
-  ROL0003:m=>["Dashboard","Patients","Medical Services","Appointments"].includes(m)?P(1,1,1,0):(["Pharmacy","Roster & Leave","Holidays","Reports"].includes(m)?P(1,0,0,0):P(0,0,0,0)),
-  ROL0004:m=>["Dashboard","Patients","Hospital Master","Roster & Leave"].includes(m)?P(1,0,1,0):P(0,0,0,0),
+  ROL0002:m=>["Dashboard","Appointments","Appointment Admin","Patients"].includes(m)?P(1,1,1,0):(["Medical Services","Holidays"].includes(m)?P(1,0,0,0):P(0,0,0,0)),
+  ROL0003:m=>["Dashboard","Patients","Medical Services","Appointments","Doctor Portal"].includes(m)?P(1,1,1,0):(["Pharmacy","Roster & Leave","Holidays","Reports"].includes(m)?P(1,0,0,0):P(0,0,0,0)),
+  ROL0004:m=>["Dashboard","Patients","Hospital Master","Roster & Leave","Appointment Admin"].includes(m)?P(1,0,1,0):P(0,0,0,0),
   ROL0005:m=>["Pharmacy","Inventory"].includes(m)?P(1,1,1,0):(m==="Dashboard"||m==="Reports"?P(1,0,0,0):P(0,0,0,0)),
   ROL0006:m=>["Staff","Roster & Leave","Holidays"].includes(m)?P(1,1,1,1):(m==="Dashboard"||m==="Reports"?P(1,0,0,0):P(0,0,0,0)),
 };
@@ -294,6 +294,27 @@ const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";
 /* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
-window.DATA_VERSION="2026-10-06-emails";
-window.SEED={hospital,departments,wards,rooms,roomTypes,beds,staff,patients,appointments,services,orders,suppliers,medicines,batches,prescriptions,dispenses,returns,roster,shifts,leaves,holidays,templates,rules,notifLog,roles,permissions,users,settings,audit,MODULES};
+window.DATA_VERSION="2026-10-06-appointments-2";
+/* ---------- Appointment management ---------- */
+const slotConfig={id:"CFG",slotMinutes:15,
+  sessions:{AM:{start:"09:00",end:"13:00"},PM:{start:"14:00",end:"16:00"}},
+  maxPerSlot:1,bookingWindowDays:30,cancelCutoffHours:2,checkInBeforeMins:60,
+  fees:{general:300,specialist:600,followUp:0},followUpFreeDays:14,generalDepts:["DEP0001","DEP0010"]};
+/* OPD days Mon..Sat per department (1 = OPD runs). Sunday is always closed. */
+const OPD_DAYS={DEP0003:[1,0,1,0,1,1],DEP0004:[1,1,0,1,1,1],DEP0007:[0,1,0,1,0,1],DEP0008:[1,0,1,0,1,0]};
+const deptSchedule=departments.map(d=>({id:d.id,days:OPD_DAYS[d.id]||[1,1,1,1,1,1]}));
+/* Each doctor's weekly pattern Mon..Sat: Full, AM, PM or Off */
+const doctorAvail=staff.filter(s=>s.role==="Doctor").map((s,i)=>({id:s.id,week:["Full","Full","Full","Full","Full",i%3===0?"AM":"Full"]}));
+const payments=[];
+const refunds=[];
+/* Keep sample appointments on days their OPD actually runs (no Sundays, closed OPD days or holidays). */
+(function(){
+  const closed=(dept,date)=>{const d=new Date(date+"T00:00").getDay();if(d===0)return true;
+    const sch=deptSchedule.find(x=>x.id===dept);if(sch&&!sch.days[d-1])return true;
+    return holidays.some(h=>h.date===date&&(h.scope==="Hospital"||(h.scope==="Department"&&h.dept===dept)));};
+  const shift=(date,n)=>{const d=new Date(date+"T00:00");d.setDate(d.getDate()+n);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
+  appointments.forEach(a=>{const dir=a.date<T?-1:1;let g=0;while(closed(a.dept,a.date)&&g++<14)a.date=shift(a.date,dir);});
+})();
+
+window.SEED={slotConfig,deptSchedule,doctorAvail,payments,refunds,hospital,departments,wards,rooms,roomTypes,beds,staff,patients,appointments,services,orders,suppliers,medicines,batches,prescriptions,dispenses,returns,roster,shifts,leaves,holidays,templates,rules,notifLog,roles,permissions,users,settings,audit,MODULES};
 })();

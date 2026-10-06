@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doctor Portal · AnI-HealthcareServices Portal</title>
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#1f6f61">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+<script src="assets/appt.js"></script>
+</head>
+<body>
+<div id="content">
+  <div class="panel"><div class="toolbar" id="docBar"></div></div>
+  <div id="kpis"></div>
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,kpis,tabs,toast,modal,opts,lookup,today,addDays,fmtDate,inr,auth}=Portal;
+const A=window.Appt,T=today();
+const me=auth.user();
+const ownDoctor=A.doctorForUser(me);
+let docId=ownDoctor?ownDoctor.id:(A.doctors()[0]||{}).id;
+let tabIndex=0,calStart=T,selPatient=null;
+const pane=document.getElementById("pane");
+
+/* Doctor selector: a doctor sees only their own desk; admins can look at any doctor's. */
+function drawBar(){
+  const bar=document.getElementById("docBar");
+  if(ownDoctor){bar.innerHTML=`<b>${esc(ownDoctor.name)}</b><span class="muted">${esc(lookup.dept(ownDoctor.dept))} · ${esc(ownDoctor.designation)}</span>`;return;}
+  bar.innerHTML=`<label for="docSel" style="margin:0">Viewing the desk of</label><select id="docSel" style="width:auto">${opts(A.doctors().map(d=>({value:d.id,label:`${d.name} · ${lookup.dept(d.dept)}`})),docId)}</select>
+    <span class="muted" style="font-size:.8rem">You're signed in as ${esc(me.name)}. Doctors see only their own desk.</span>`;
+  document.getElementById("docSel").onchange=e=>{docId=e.target.value;refresh();};
+}
+function refreshKpis(){
+  const q=A.queue(docId),todayList=A.all().filter(a=>a.doctor===docId&&a.date===T&&a.status!=="Cancelled");
+  const next=A.nextAvailable(docId);
+  kpis("#kpis",[
+    {l:"Today's appointments",n:todayList.length,d:`${todayList.filter(a=>a.source==="Walk-in").length} walk-in`},
+    {l:"Waiting now",n:q.waiting.length,d:q.serving?`Now serving ${q.serving.token}`:"Nobody in consultation"},
+    {l:"Seen today",n:q.done.length},
+    {l:"Still to arrive",n:q.booked.length},
+    {l:"No-shows",n:q.noShow.length,t:q.noShow.length?"down":""},
+    {l:"Next free slot",n:next?`${next.slot}`:"—",d:next?fmtDate(next.date):"No free slots in the booking window"},
+  ]);
+}
+function refresh(){refreshKpis();[todayTab,calendarTab,patientTab,availabilityTab][tabIndex]();}
+
+/* ---------- Actions ---------- */
+function run(r,okMsg){if(!r.ok){toast(r.msg);return false;}toast(okMsg(r));refresh();return true;}
+function completeDialog(id){
+  const a=A.find(id);
+  modal({title:`Complete consultation · ${a.token} ${lookup.patient(a.patient)}`,body:`
+    <div class="form-grid">
+      <div class="field full"><label for="cDx">Diagnosis</label><input id="cDx" placeholder="e.g. Essential hypertension"></div>
+      <div class="field full"><label for="cNotes">Consultation notes</label><textarea id="cNotes" placeholder="Findings, advice, medicines prescribed"></textarea></div>
+      <div class="field"><label for="cFu">Follow-up</label><select id="cFu"><option value="0">Not needed</option><option value="7">In 7 days</option><option value="14">In 14 days</option><option value="30">In 30 days</option></select></div>
+      <div class="field"><label for="cBook">&nbsp;</label><label class="check" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="cBook" style="width:18px;height:18px"> Book the follow-up now</label></div>
+    </div>`,buttons:[{label:"Complete appointment",cls:"primary",onClick:d=>{
+      const days=+d.querySelector("#cFu").value;
+      const r=A.complete(id,{diagnosis:d.querySelector("#cDx").value.trim(),notes:d.querySelector("#cNotes").value.trim(),followUpDays:days});
+      if(!r.ok){toast(r.msg);return false;}
+      toast(`${a.token} completed`);refresh();
+      if(days>0&&d.querySelector("#cBook").checked)setTimeout(()=>followUpDialog(id),50);
+    }}]});
+}
+function followUpDialog(id){
+  const a=A.find(id);
+  A.pickSlot({title:`Book follow-up · ${lookup.patient(a.patient)}`,doc:a.doctor,date:a.followUpAdvised||addDays(T,7),confirmLabel:"Book follow-up",
+    note:`Follow-ups within ${A.cfg().followUpFreeDays} days of the visit are ${inr(A.cfg().fees.followUp)}.`,
+    onConfirm:(date,slot)=>{const r=A.followUp(id,date,slot,"Doctor");if(r.ok){toast(`Follow-up ${r.appt.id} booked for ${fmtDate(date)} ${slot}`);refresh();}return r;}});
+}
+function apptActions(a){
+  const b=[];
+  if(a.status==="Booked")b.push(`<button class="btn sm" data-act="noshow" data-id="${a.id}">No-show</button>`);
+  if(a.status==="Checked In")b.push(`<button class="btn sm primary" data-act="start" data-id="${a.id}">Call in</button>`);
+  if(a.status==="In Consultation")b.push(`<button class="btn sm primary" data-act="complete" data-id="${a.id}">Complete</button>`);
+  if(a.status==="Completed")b.push(`<button class="btn sm" data-act="followup" data-id="${a.id}">Book follow-up</button>`);
+  b.push(`<button class="btn sm link" data-act="patient" data-id="${a.id}">Patient</button>`);
+  return b.join("");
+}
+function bindActions(root){
+  root.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.id,act=b.dataset.act;
+    if(act==="start")run(A.start(id),r=>`${r.appt.token} called in`);
+    else if(act==="next")run(A.callNext(docId),r=>`${r.appt.token} called in`);
+    else if(act==="complete")completeDialog(id);
+    else if(act==="noshow")run(A.noShow(id),r=>`${r.appt.id} marked no-show`);
+    else if(act==="followup")followUpDialog(id);
+    else if(act==="patient"){selPatient=A.find(id).patient;document.querySelectorAll(".tabs button")[2].click();}
+  });
+}
+
+/* ---------- Tab 1: Today's appointments + patient queue ---------- */
+function todayTab(){
+  const q=A.queue(docId);
+  const list=A.all().filter(a=>a.doctor===docId&&a.date===T).sort((x,y)=>x.slot.localeCompare(y.slot));
+  const s=q.serving;
+  pane.innerHTML=`<div class="panel-body grid-2" style="grid-template-columns:minmax(0,5fr) minmax(0,7fr)">
+    <div style="display:grid;gap:.8rem;align-content:start">
+      <h3 style="font-size:.95rem">Patient queue</h3>
+      <div class="qcard ${s?"now":""}">
+        <div class="muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700">Now in consultation</div>
+        ${s?`<div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-top:.3rem;flex-wrap:wrap"><div><span class="token">${esc(s.token)}</span><div><b>${esc(lookup.patient(s.patient))}</b> <span class="muted">· since ${esc(s.startAt||"")}</span></div><div class="muted" style="font-size:.8rem">${esc(s.reason||s.type)}</div></div>
+          <div class="actions"><button class="btn sm primary" data-act="complete" data-id="${s.id}">Complete</button><button class="btn sm link" data-act="patient" data-id="${s.id}">Patient</button></div></div>`
+        :`<p class="muted" style="margin:.4rem 0 0">Nobody right now.</p>`}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><b>Waiting (${q.waiting.length})</b><button class="btn primary sm" data-act="next" ${s||!q.waiting.length?"disabled":""}>Call next patient</button></div>
+      <ul class="list" style="border:1px solid var(--line);border-radius:8px">${q.waiting.map(a=>`<li><span class="token sm">${esc(a.token)}</span><div class="grow"><b>${esc(lookup.patient(a.patient))}</b><div class="sub">Checked in ${esc(a.checkInAt||"")} · slot ${esc(a.slot)}${a.source==="Walk-in"?" · walk-in":""}</div></div><div class="actions">${apptActions(a)}</div></li>`).join("")||'<li class="empty">No one is waiting.</li>'}</ul>
+    </div>
+    <div style="min-width:0">
+      <h3 style="font-size:.95rem;margin-bottom:.8rem">Today's appointments · ${fmtDate(T)}</h3>
+      <div class="table-wrap" style="border:1px solid var(--line);border-radius:8px"><table class="dt"><thead><tr><th class="noclick">Slot</th><th class="noclick">Patient</th><th class="noclick">Consultation status</th><th class="noclick"></th></tr></thead><tbody>
+      ${list.map(a=>`<tr><td class="mono">${esc(a.slot)}${a.token?`<div class="muted" style="font-size:.72rem">${esc(a.token)}</div>`:""}</td><td><b>${esc(lookup.patient(a.patient))}</b><div class="muted" style="font-size:.72rem">${esc(a.type)} · ${esc(a.source||"Front desk")}</div></td><td>${pill(a.status)}</td><td class="act"><div class="actions" style="justify-content:flex-end">${["Cancelled","No Show"].includes(a.status)?"":apptActions(a)}</div></td></tr>`).join("")||`<tr><td colspan="4" class="empty">No appointments today.</td></tr>`}
+      </tbody></table></div>
+    </div></div>`;
+  bindActions(pane);
+}
+
+/* ---------- Tab 2: My calendar (week view) ---------- */
+const offLabel=m=>/^Holiday/.test(m)?m:/leave/.test(m)?"On leave":/doesn't consult/.test(m)?"Not consulting":/Sundays/.test(m)?"Sunday":/OPD doesn't run/.test(m)?"No OPD":/Bookings open/.test(m)?"Beyond booking window":m;
+function calendarTab(){
+  const days=A.weekDays(calStart);
+  const list=A.all().filter(a=>a.doctor===docId&&days.includes(a.date));
+  pane.innerHTML=`<div class="toolbar"><button class="btn sm" id="wPrev" aria-label="Previous week">‹</button><b>${fmtDate(days[0])} – ${fmtDate(days[6])}</b><button class="btn sm" id="wNext" aria-label="Next week">›</button><button class="btn sm" id="wToday">This week</button>
+    <span style="flex:1"></span><span class="muted" style="font-size:.78rem">${list.filter(a=>a.status!=="Cancelled").length} appointments this week</span></div>
+    <div class="panel-body"><div class="week">${days.map(d=>{
+      const av=A.availability(docId,d,{allowPast:true});
+      const items=list.filter(a=>a.date===d).sort((x,y)=>x.slot.localeCompare(y.slot));
+      const label=av.ok?(av.sessions.length===2?"Full day":av.sessions[0]==="AM"?"Morning":"Afternoon"):"Off";
+      return `<div class="day ${d===T?"today":""} ${av.ok?"":"off"}"><h4><span>${new Date(d+"T00:00").toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short"})}</span><span class="muted" style="font-weight:500">${label}</span></h4>
+        ${!av.ok&&!items.length?`<div class="empty muted">${esc(offLabel(av.msg))}</div>`:""}
+        ${items.map(a=>`<button type="button" class="ap s-${a.status.split(" ")[0]}" data-cal="${a.id}"><span class="mono">${esc(a.slot)}</span> ${esc(a.status)}<b>${esc(lookup.patient(a.patient))}</b></button>`).join("")}
+        ${av.ok&&!items.length?`<div class="empty muted">No bookings yet</div>`:""}<div style="height:.4rem"></div></div>`;}).join("")}</div></div>`;
+  pane.querySelector("#wPrev").onclick=()=>{calStart=addDays(days[0],-7);calendarTab();};
+  pane.querySelector("#wNext").onclick=()=>{calStart=addDays(days[0],7);calendarTab();};
+  pane.querySelector("#wToday").onclick=()=>{calStart=T;calendarTab();};
+  pane.querySelectorAll("[data-cal]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.cal);
+    modal({title:`${a.id} · ${lookup.patient(a.patient)}`,body:`<p>${fmtDate(a.date)} at <b class="mono">${esc(a.slot)}</b> · ${pill(a.status)} · ${esc(a.type)}</p><p class="muted">${esc(a.reason||"")}</p>${A.logHTML(a)}`});});
+}
+
+/* ---------- Tab 3: Patient details ---------- */
+function patientTab(){
+  const mine=[...new Set(A.all().filter(a=>a.doctor===docId).map(a=>a.patient))];
+  if(!selPatient||!mine.includes(selPatient))selPatient=selPatient||mine[0];
+  const p=db.find("patients",selPatient);
+  const age=p&&p.dob?Math.floor((new Date()-new Date(p.dob+"T00:00"))/31557600000):"—";
+  const visits=p?A.all().filter(a=>a.patient===p.id).sort((x,y)=>(y.date+y.slot).localeCompare(x.date+x.slot)):[];
+  const rx=p?db.get("prescriptions").filter(r=>r.patient===p.id):[];
+  pane.innerHTML=`<div class="toolbar"><label for="pSel" style="margin:0">Patient</label><select id="pSel" style="width:auto">${opts(mine.map(id=>({value:id,label:`${lookup.patient(id)} · ${id}`})),selPatient)}</select><span class="muted" style="font-size:.78rem">Patients who have an appointment with this doctor</span></div>
+    ${p?`<div class="panel-body grid-2">
+      <div><h3 style="font-size:.95rem;margin-bottom:.6rem">${esc(p.name)} <span class="muted mono" style="font-weight:400">${esc(p.id)}</span></h3>
+        <table class="dt"><tbody>${[["Age / gender",`${age} y · ${esc(p.gender)}`],["Blood group",esc(p.blood||"—")],["Mobile",`<span class="mono">${esc(p.phone)}</span>`],["Insurance",esc(p.insurance||"None")],["Medical history",esc(p.history||"None recorded")]].map(([k,v])=>`<tr><td class="muted">${k}</td><td>${v}</td></tr>`).join("")}</tbody></table>
+        <h3 style="font-size:.85rem;margin:1rem 0 .5rem">Prescriptions</h3>
+        <ul class="list" style="border:1px solid var(--line);border-radius:8px">${rx.map(r=>`<li><div class="grow"><b>${esc(r.id)}</b> · ${fmtDate(r.date)}<div class="sub">${r.items.map(i=>esc(lookup.med(i.med))+" "+esc(i.dose)).join(", ")}</div></div>${pill(r.status)}</li>`).join("")||'<li class="empty">No prescriptions.</li>'}</ul></div>
+      <div><h3 style="font-size:.95rem;margin-bottom:.6rem">Visits and consultation notes</h3>
+        <ul class="list" style="border:1px solid var(--line);border-radius:8px">${visits.map(a=>`<li style="align-items:flex-start"><span class="mono" style="width:5.5rem;font-size:.78rem">${fmtDate(a.date)}<br>${esc(a.slot)}</span><div class="grow"><b>${esc(lookup.staff(a.doctor))}</b> · ${esc(lookup.dept(a.dept))}<div class="sub">${esc(a.type)}${a.diagnosis?` · <b>${esc(a.diagnosis)}</b>`:""}</div>${a.notes?`<div style="font-size:.82rem;margin-top:.2rem">${esc(a.notes)}</div>`:""}${a.followUpAdvised?`<div class="sub">Follow-up advised by ${fmtDate(a.followUpAdvised)}</div>`:""}</div>${pill(a.status)}</li>`).join("")}</ul></div>
+    </div>`:`<div class="empty">No patients yet.</div>`}`;
+  const sel=pane.querySelector("#pSel");if(sel)sel.onchange=e=>{selPatient=e.target.value;patientTab();};
+}
+
+/* ---------- Tab 4: Availability management ---------- */
+function availabilityTab(){
+  const AV=db.get("doctorAvail");let rec=AV.find(x=>x.id===docId);
+  if(!rec){rec={id:docId,week:["Full","Full","Full","Full","Full","Full"]};AV.push(rec);db.set("doctorAvail",AV);}
+  const d=A.doctor(docId),ds=db.get("deptSchedule").find(x=>x.id===d.dept);
+  const away=db.get("leaves").filter(l=>l.staff===docId&&l.to>=T&&l.status!=="Rejected").sort((x,y)=>x.from.localeCompare(y.from));
+  const c=A.cfg();
+  pane.innerHTML=`<div class="panel-body grid-2">
+    <div><h3 style="font-size:.95rem">Weekly consulting pattern</h3>
+      <p class="muted" style="font-size:.82rem;margin:.3rem 0 .8rem">Morning ${c.sessions.AM.start}–${c.sessions.AM.end} · Afternoon ${c.sessions.PM.start}–${c.sessions.PM.end}. Days when the ${esc(lookup.dept(d.dept))} OPD doesn't run are locked.</p>
+      <table class="dt avail-grid"><tbody>${A.DAYS.slice(1).map((n,i)=>{const open=!ds||ds.days[i];return `<tr><td><b>${n}</b></td><td>${open?`<select data-day="${i}" aria-label="${n}">${opts([{value:"Full",label:"Full day"},{value:"AM",label:"Morning only"},{value:"PM",label:"Afternoon only"},{value:"Off",label:"Off"}],rec.week[i])}</select>`:'<span class="muted">No OPD</span>'}</td></tr>`;}).join("")}</tbody></table>
+      <button class="btn primary" id="saveWeek" style="margin-top:.8rem">Save weekly pattern</button></div>
+    <div><h3 style="font-size:.95rem">Unavailable dates</h3>
+      <p class="muted" style="font-size:.82rem;margin:.3rem 0 .8rem">Blocks booking on these dates. Existing bookings are listed so the OPD desk can move them.</p>
+      <div class="form-grid"><div class="field"><label for="uFrom">From</label><input id="uFrom" type="date" min="${T}"></div><div class="field"><label for="uTo">To</label><input id="uTo" type="date" min="${T}"></div>
+      <div class="field full"><label for="uWhy">Reason</label><input id="uWhy" placeholder="e.g. Conference, personal leave"></div></div>
+      <button class="btn" id="addAway" style="margin-top:.8rem">Mark unavailable</button>
+      <ul class="list" style="border:1px solid var(--line);border-radius:8px;margin-top:1rem">${away.map(l=>`<li><div class="grow"><b>${fmtDate(l.from)}${l.to!==l.from?" – "+fmtDate(l.to):""}</b><div class="sub">${esc(l.type)} · ${esc(l.reason||"")}</div></div>${pill(l.status)}</li>`).join("")||'<li class="empty">No upcoming unavailable dates.</li>'}</ul></div></div>`;
+  pane.querySelector("#saveWeek").onclick=()=>{
+    const L=db.get("doctorAvail"),r=L.find(x=>x.id===docId);
+    pane.querySelectorAll("[data-day]").forEach(s=>r.week[+s.dataset.day]=s.value);
+    db.set("doctorAvail",L);Portal.audit(me.username,`Updated weekly availability of ${d.name}`);toast("Weekly pattern saved");refresh();
+  };
+  pane.querySelector("#addAway").onclick=()=>{
+    const from=pane.querySelector("#uFrom").value,to=pane.querySelector("#uTo").value||from,why=pane.querySelector("#uWhy").value.trim();
+    if(!from){toast("Choose the first unavailable date.");return;}
+    if(to<from){toast("The end date is before the start date.");return;}
+    const L=db.get("leaves");
+    L.unshift({id:Portal.uid("LV","leaves"),staff:docId,type:"Unavailable (doctor)",from,to,days:Portal.daysBetween(from,to)+1,reason:why||"Marked from the Doctor Portal",status:"Approved"});
+    db.set("leaves",L);Portal.audit(me.username,`Marked ${d.name} unavailable ${from} to ${to}`);
+    const clash=A.all().filter(a=>a.doctor===docId&&a.date>=from&&a.date<=to&&a.status==="Booked");
+    toast(clash.length?`Saved. ${clash.length} booked appointment(s) in those dates need moving — see Appointment Admin.`:"Saved. Those dates are now blocked.");
+    refresh();
+  };
+}
+
+drawBar();
+if(!docId){document.getElementById("pane").innerHTML='<div class="empty">No active doctors found.</div>';}
+else tabs("#tabs",["Today & queue","My calendar","Patient details","Availability"],i=>{tabIndex=i;refresh();});
+</script>
+</body>
+</html>

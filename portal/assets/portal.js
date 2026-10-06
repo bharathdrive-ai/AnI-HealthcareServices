@@ -19,7 +19,10 @@ const PAGES=[
   {no:"01",file:"dashboard.html",mod:"Dashboard",title:"Dashboard",group:"Overview"},
   {no:"02",file:"administration.html",mod:"Administration",title:"Administration",group:"Overview"},
   {no:"03",file:"hospital-master.html",mod:"Hospital Master",title:"Hospital Master",group:"Setup"},
-  {no:"04",file:"appointments.html",mod:"Appointments",title:"Appointment Booking",group:"Patient care"},
+  {no:"04",file:"appointments.html",mod:"Appointments",title:"Front Desk Booking",group:"Appointment Management"},
+  {no:"4A",file:"doctor.html",mod:"Doctor Portal",title:"Doctor Portal",group:"Appointment Management"},
+  {no:"4B",file:"appointment-admin.html",mod:"Appointment Admin",title:"Appointment Admin",group:"Appointment Management"},
+  {no:"4C",file:"../patient/index.html",mod:"Appointments",title:"Patient Portal ↗",group:"Appointment Management",external:true},
   {no:"05",file:"patients.html",mod:"Patients",title:"Patient Management",group:"Patient care"},
   {no:"06",file:"services.html",mod:"Medical Services",title:"Medical Services",group:"Patient care"},
   {no:"07",file:"staff.html",mod:"Staff",title:"Staff Management",group:"People"},
@@ -108,7 +111,7 @@ const auth={
     const u=auth.user();if(u)audit(u.username,reason==="expired"?"Session expired":"Signed out");
     auth.clear();location.replace("login.html"+(reason?`?${reason}=1`:""));
   },
-  firstAllowed(){return PAGES.find(p=>auth.can(p.mod))||null;},
+  firstAllowed(){return PAGES.find(p=>!p.external&&auth.can(p.mod))||null;},
 };
 
 /* When passwords are rotated in data.js, replace the user list saved in this browser and end old sessions. */
@@ -134,6 +137,15 @@ const auth={
     if(add.length){stored.push(...structuredClone(add));try{localStorage.setItem(PREFIX+k,JSON.stringify(stored));}catch(e){}}
     delete mem[k];
   });
+  /* New permission modules (e.g. Doctor Portal, Appointment Admin): add seed defaults to saved roles. */
+  (function(){
+    let stored=null;try{stored=JSON.parse(localStorage.getItem(PREFIX+"permissions"));}catch(e){}
+    if(!Array.isArray(stored))return;
+    let changed=false;
+    ((window.SEED||{}).permissions||[]).forEach(sp=>{const r=stored.find(x=>x.id===sp.id);if(!r)return;
+      Object.entries(sp.perms).forEach(([m,v])=>{if(!r.perms[m]){r.perms[m]={...v};changed=true;}});});
+    if(changed){try{localStorage.setItem(PREFIX+"permissions",JSON.stringify(stored));}catch(e){}delete mem.permissions;}
+  })();
   /* Email domain moved from jac.example to the AnI-HealthcareServices name: update saved copies in place. */
   ["staff","users","hospital","notifLog"].forEach(k=>{
     let raw=null;try{raw=localStorage.getItem(PREFIX+k);}catch(e){}
@@ -170,9 +182,9 @@ function uid(prefix,key){
 }
 const TONE={
   ok:["active","confirmed","completed","available","in stock","approved","dispensed","paid","enabled","present","free","open","sent","on duty","normal","discharged"],
-  warn:["pending","scheduled","waiting","low stock","on leave","near expiry","partial","draft","cleaning","checked in","in progress","admitted","due"],
+  warn:["unpaid","refund pending","pending","scheduled","waiting","low stock","on leave","near expiry","partial","draft","cleaning","checked in","in progress","admitted","due"],
   alert:["cancelled","inactive","expired","out of stock","rejected","no show","blocked","critical","failed","disabled","overdue","emergency"],
-  info:["booked","in consultation","occupied","returned","opd","ipd","new"],
+  info:["refunded","walk-in","rescheduled","booked","in consultation","occupied","returned","opd","ipd","new"],
 };
 function pill(text){
   const t=String(text||"").toLowerCase();
@@ -187,26 +199,30 @@ function toast(msg){
 function opts(list,sel){return list.map(o=>{const v=typeof o==="object"?o.value:o,l=typeof o==="object"?o.label:o;return `<option value="${esc(v)}" ${String(v)===String(sel)?"selected":""}>${esc(l)}</option>`;}).join("");}
 
 /* Modal: returns the dialog. buttons: [{label, cls, onClick(dlg) -> false keeps open}] */
-function modal({title,body,buttons=[],wide=false}){
+function modal({title,body,buttons=[],wide=false,onClose}){
   const d=document.createElement("dialog");
   if(wide) d.style.width="min(880px,calc(100vw - 32px))";
   d.innerHTML=`<div class="mh"><h3 style="font-size:1rem">${esc(title)}</h3><button class="btn sm" data-x aria-label="Close">✕</button></div>
     <div class="mb">${body}</div><div class="mf"></div>`;
+  /* Close and remove explicitly: the dialog "close" event is not guaranteed to fire in every browser context. */
+  let closed=false;
+  const finish=()=>{if(closed)return;closed=true;try{if(d.open)d.close();}catch(e){}d.remove();if(onClose)onClose();};
   const mf=d.querySelector(".mf");
   [{label:"Cancel"},...buttons].forEach(b=>{
     const el=document.createElement("button");el.type="button";el.className="btn "+(b.cls||"");el.textContent=b.label;
-    el.onclick=()=>{if(b.onClick&&b.onClick(d)===false)return;d.close();};
+    el.onclick=()=>{if(b.onClick&&b.onClick(d)===false)return;finish();};
     mf.appendChild(el);
   });
-  d.querySelector("[data-x]").onclick=()=>d.close();
-  d.addEventListener("close",()=>d.remove());
+  d.querySelector("[data-x]").onclick=finish;
+  d.addEventListener("cancel",e=>{e.preventDefault();finish();}); // Esc key
+  d.addEventListener("close",finish);
   document.body.appendChild(d);d.showModal();
   return d;
 }
 function confirmBox(title,text,label="Delete"){
   return new Promise(res=>{
-    const d=modal({title,body:`<p>${esc(text)}</p>`,buttons:[{label,cls:"primary",onClick:()=>{res(true);}}]});
-    d.addEventListener("close",()=>res(false));
+    let answered=false;
+    modal({title,body:`<p>${esc(text)}</p>`,buttons:[{label,cls:"primary",onClick:()=>{answered=true;res(true);}}],onClose:()=>{if(!answered)res(false);}});
   });
 }
 
@@ -354,7 +370,7 @@ function shell(){
   app.innerHTML=`<aside class="side" id="side">
       <a class="brand" href="${esc((auth.firstAllowed()||PAGES[0]).file)}"><span class="brand-logo"><picture><source srcset="../assets/ani-logo-96.webp 1x, ../assets/ani-logo-160.webp 2x" type="image/webp"><img src="../assets/ani-logo-96.png" width="84" height="34" alt="AnI-HealthcareServices logo"></picture></span>
         <span><b>Staff Portal</b><small>MEDICAL INSTITUTE &amp; HOSPITAL</small></span></a>
-      <nav aria-label="Portal">${groups.map(g=>`<div class="group">${esc(g)}</div>`+visible.filter(p=>p.group===g).map(p=>`<a href="${p.file}" ${p===page?'aria-current="page"':""}><span class="no">${p.no}</span>${esc(p.title)}</a>`).join("")).join("")}
+      <nav aria-label="Portal">${groups.map(g=>`<div class="group">${esc(g)}</div>`+visible.filter(p=>p.group===g).map(p=>`<a href="${p.file}" ${p.external?'target="_blank" rel="noopener"':""} ${p===page?'aria-current="page"':""}><span class="no">${p.no}</span>${esc(p.title)}</a>`).join("")).join("")}
         <div class="group">Account</div>
         ${isAdmin?`<a href="#" id="resetData"><span class="no">↺</span>Reset sample data</a>`:""}
         <a href="../index.html"><span class="no">↗</span>Public website</a>

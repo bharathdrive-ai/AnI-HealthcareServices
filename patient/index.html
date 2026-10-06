@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Patient Portal · AnI-HealthcareServices</title>
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#1f6f61">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../portal/assets/portal.css">
+<script src="../portal/assets/data.js"></script>
+<script src="../portal/assets/portal.js"></script>
+<script src="../portal/assets/appt.js"></script>
+<style>
+.pp-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:0}
+.pp-top .wrap{display:flex;align-items:center;gap:.8rem;padding:.7rem 16px;max-width:1100px;margin:0 auto}
+.pp-top::after{content:"";display:block;height:3px;background:linear-gradient(90deg,var(--scrub),var(--teal) 45%,var(--leaf) 70%,var(--orange))}
+.pp-brand{display:flex;align-items:center;gap:.6rem;text-decoration:none;color:var(--ink);margin-right:auto;min-width:0}
+.pp-brand img{height:38px;width:auto;display:block}
+.pp-brand b{font-family:var(--f-display);font-weight:400;font-size:1.05rem;white-space:nowrap}
+.pp-main{max-width:1100px;margin:0 auto;padding:1.5rem 16px 3rem;display:grid;gap:1.25rem}
+.pp-hello h1{font-family:var(--f-display);font-weight:400;font-size:clamp(1.5rem,3vw,2rem)}
+.doc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.9rem}
+.doc-card{border:1px solid var(--line);border-radius:10px;padding:1rem;background:var(--surface);display:grid;gap:.4rem;align-content:start}
+.doc-card .fee{font-family:var(--f-mono);font-weight:600}
+.appt-card{border:1px solid var(--line);border-radius:10px;padding:1rem;background:var(--surface);display:grid;gap:.6rem}
+.appt-card .when{font-family:var(--f-mono);font-weight:600;font-size:1.05rem}
+.signin{max-width:440px;margin:1rem auto;display:grid;gap:1rem}
+@media (max-width:520px){.pp-brand b{display:none}}
+:root[data-theme="dark"] .pp-brand img{background:#fff;border-radius:6px;padding:2px 5px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pp-brand img{background:#fff;border-radius:6px;padding:2px 5px}}
+</style>
+</head>
+<body>
+<header class="pp-top"><div class="wrap">
+  <a class="pp-brand" href="../index.html"><picture><source srcset="../assets/ani-logo-96.webp 1x, ../assets/ani-logo-160.webp 2x" type="image/webp"><img src="../assets/ani-logo-96.png" width="94" height="38" alt="AnI-HealthcareServices logo"></picture><b>Patient Portal</b></a>
+  <span id="who" class="muted" style="font-size:.85rem"></span>
+  <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch to dark theme" title="Switch theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg></button>
+  <button class="btn sm" id="signOut" hidden>Sign out</button>
+</div></header>
+<main class="pp-main" id="main"></main>
+<script>
+const {db,esc,pill,toast,modal,opts,lookup,today,addDays,fmtDate,inr}=Portal;
+const A=window.Appt,T=today(),main=document.getElementById("main");
+Portal.theme.bind();
+let tabIndex=0,bookPre={};
+const me=()=>{const s=A.patient.get();return s?db.find("patients",s.id):null;};
+const mine=()=>A.all().filter(a=>a.patient===me().id);
+const upcoming=()=>mine().filter(a=>a.date>=T&&["Booked","Checked In","In Consultation"].includes(a.status)).sort((x,y)=>(x.date+x.slot).localeCompare(y.date+y.slot));
+const past=()=>mine().filter(a=>!upcoming().includes(a)).sort((x,y)=>(y.date+y.slot).localeCompare(x.date+x.slot));
+const feeLabel=v=>v===0?"Free":inr(v);
+
+/* ---------- Sign in / register ---------- */
+function signIn(){
+  document.getElementById("who").textContent="";document.getElementById("signOut").hidden=true;
+  main.innerHTML=`<div class="signin">
+    <div><h1 style="font-family:var(--f-display);font-weight:400;font-size:1.8rem">Book and manage your OPD visits</h1>
+    <p class="muted" style="margin-top:.4rem">Sign in with the mobile number and date of birth you registered with.</p></div>
+    <div class="panel"><div class="panel-body" style="display:grid;gap:.9rem">
+      <div class="notice" id="siErr" role="alert" hidden></div>
+      <div class="field"><label for="siPhone">Mobile number</label><input id="siPhone" inputmode="numeric" autocomplete="tel" placeholder="10-digit mobile"></div>
+      <div class="field"><label for="siDob">Date of birth</label><input id="siDob" type="date" max="${T}"></div>
+      <button class="btn primary" id="siGo" style="justify-content:center">Sign in</button>
+      <button class="btn link" id="siSample" type="button" style="justify-self:start">Use a sample patient (demo)</button>
+    </div></div>
+    <div class="panel"><div class="panel-body" style="display:grid;gap:.9rem">
+      <b>New patient? Register in a minute</b>
+      <div class="form-grid">
+        <div class="field full"><label for="rgName">Full name</label><input id="rgName" autocomplete="name"></div>
+        <div class="field"><label for="rgPhone">Mobile number</label><input id="rgPhone" inputmode="numeric" autocomplete="tel"></div>
+        <div class="field"><label for="rgDob">Date of birth</label><input id="rgDob" type="date" max="${T}"></div>
+        <div class="field"><label for="rgGender">Gender</label><select id="rgGender"><option>Female</option><option>Male</option><option>Other</option></select></div>
+        <div class="field"><label for="rgCity">City</label><input id="rgCity" autocomplete="address-level2"></div>
+      </div>
+      <p class="err" id="rgErr"></p>
+      <button class="btn" id="rgGo">Register and continue</button>
+    </div></div>
+    <p class="muted" style="font-size:.78rem">Demo portal with sample data. Bookings are saved in this browser only and payments are simulated.</p></div>`;
+  const $=id=>document.getElementById(id);
+  $("siGo").onclick=()=>{
+    const phone=$("siPhone").value.replace(/\D/g,""),dob=$("siDob").value,err=$("siErr");
+    const p=db.get("patients").find(x=>x.phone===phone&&x.dob===dob);
+    if(!p){err.textContent="We couldn't find a patient with that mobile number and date of birth. Check them, or register below.";err.hidden=false;return;}
+    A.patient.set(p.id);start();
+  };
+  $("siSample").onclick=()=>{const p=db.get("patients")[0];$("siPhone").value=p.phone;$("siDob").value=p.dob;$("siGo").focus();};
+  $("rgGo").onclick=()=>{
+    const name=$("rgName").value.trim(),phone=$("rgPhone").value.replace(/\D/g,""),dob=$("rgDob").value,err=$("rgErr");
+    if(!name)return err.textContent="Enter your full name.";
+    if(!/^[6-9]\d{9}$/.test(phone))return err.textContent="Enter a 10-digit Indian mobile number.";
+    if(!dob||dob>T)return err.textContent="Enter your date of birth.";
+    const P=db.get("patients");
+    if(P.some(x=>x.phone===phone&&x.dob===dob))return err.textContent="You're already registered. Sign in above.";
+    const id="UHID"+(Math.max(...P.map(x=>+x.id.replace("UHID","")))+1);
+    P.unshift({id,name,phone,dob,gender:$("rgGender").value,city:$("rgCity").value.trim(),blood:"",history:"",type:"OPD",status:"Active",registered:T,insurance:"None"});
+    db.set("patients",P);A.patient.set(id);toast(`Registered · your UHID is ${id}`);start();
+  };
+}
+
+/* ---------- Signed in ---------- */
+function start(){
+  const p=me();if(!p)return signIn();
+  document.getElementById("who").textContent=`${p.name} · ${p.id}`;
+  const so=document.getElementById("signOut");so.hidden=false;so.onclick=()=>{A.patient.clear();toast("Signed out");signIn();};
+  const up=upcoming();
+  main.innerHTML=`<div class="pp-hello"><h1>Hello, ${esc(p.name.split(" ")[0])}</h1>
+    <p class="muted">${up.length?`Your next visit: <b>${fmtDate(up[0].date)} at ${esc(up[0].slot)}</b> with ${esc(lookup.staff(up[0].doctor))}.`:"You have no upcoming appointments."}</p></div>
+    <div class="panel"><div id="ppTabs"></div><div id="pane"></div></div>`;
+  Portal.tabs("#ppTabs",["Find a doctor","Book appointment",`My appointments (${up.length})`,"History"],i=>{tabIndex=i;[findDoctor,bookTab,myAppts,history][i]();});
+  if(tabIndex)document.querySelectorAll("#ppTabs button")[tabIndex].click();
+}
+const pane=()=>document.getElementById("pane");
+const goTab=i=>{tabIndex=i;document.querySelectorAll("#ppTabs button")[i].click();};
+
+/* ---------- Find a doctor ---------- */
+function findDoctor(){
+  const depts=db.get("departments").filter(d=>A.doctors(d.id).length);
+  pane().innerHTML=`<div class="toolbar"><input type="search" id="fdQ" placeholder="Search by doctor or speciality" aria-label="Search doctors"><select id="fdDept" style="width:auto" aria-label="Department"><option value="">All departments</option>${opts(depts.map(d=>({value:d.id,label:d.name})))}</select></div><div class="panel-body"><div class="doc-cards" id="fdList"></div></div>`;
+  const draw=()=>{const q=document.getElementById("fdQ").value.toLowerCase(),dep=document.getElementById("fdDept").value;
+    const list=A.doctors(dep).filter(d=>!q||`${d.name} ${lookup.dept(d.dept)} ${d.qual}`.toLowerCase().includes(q));
+    document.getElementById("fdList").innerHTML=list.map(d=>{const n=A.nextAvailable(d.id),f=A.feeFor(d.id,"New");
+      return `<div class="doc-card"><b>${esc(d.name)}</b><span class="muted" style="font-size:.85rem">${esc(d.qual)}</span><span style="font-size:.85rem">${esc(lookup.dept(d.dept))} · ${esc(d.designation)}</span>
+        <span style="font-size:.82rem">${d.exp} years' experience · fee <span class="fee">${feeLabel(f)}</span></span>
+        <span style="font-size:.82rem" class="${n?"":"muted"}">${n?`Next available: <b>${fmtDate(n.date)} ${n.slot}</b>`:"No free slots in the next few weeks"}</span>
+        <button class="btn primary sm" data-book="${d.id}" ${n?"":"disabled"} style="justify-self:start;margin-top:.2rem">Book appointment</button></div>`;}).join("")||'<p class="muted">No doctors match your search.</p>';
+    document.querySelectorAll("[data-book]").forEach(b=>b.onclick=()=>{const d=A.doctor(b.dataset.book),n=A.nextAvailable(d.id);bookPre={dept:d.dept,doctor:d.id,date:n?n.date:T};goTab(1);});
+  };
+  document.getElementById("fdQ").oninput=draw;document.getElementById("fdDept").onchange=draw;draw();
+}
+
+/* ---------- Book appointment ---------- */
+function bookTab(){
+  const depts=db.get("departments").filter(d=>A.doctors(d.id).length);
+  let chosen=null;
+  pane().innerHTML=`<div class="panel-body grid-2" style="grid-template-columns:minmax(0,7fr) minmax(0,5fr)">
+    <div style="display:grid;gap:.9rem;align-content:start"><div class="form-grid">
+      <div class="field"><label for="bDept">Department</label><select id="bDept">${opts(depts.map(d=>({value:d.id,label:d.name})),bookPre.dept)}</select></div>
+      <div class="field"><label for="bDoc">Doctor</label><select id="bDoc"></select></div>
+      <div class="field"><label for="bDate">Date</label><input id="bDate" type="date" min="${T}" max="${addDays(T,A.cfg().bookingWindowDays)}"></div>
+      <div class="field"><label for="bWhy">Reason for visit</label><input id="bWhy" placeholder="e.g. knee pain for 3 weeks"></div></div>
+      <div><div style="display:flex;justify-content:space-between;gap:.5rem"><label>Choose a time</label><span class="muted" id="bNote" style="font-size:.75rem"></span></div><div class="slots" id="bSlots" style="margin-top:.4rem"></div></div></div>
+    <div class="appt-card" style="align-content:start"><b>Your booking</b><div id="bSum" class="muted">Pick a doctor, date and time.</div>
+      <button class="btn primary" id="bGo" disabled style="justify-content:center">Confirm booking</button><p class="err" id="bErr"></p>
+      <p class="muted" style="font-size:.78rem;margin:0">You can reschedule or cancel up to ${A.cfg().cancelCutoffHours} hours before your slot. Please arrive 15 minutes early.</p></div></div>`;
+  const $=id=>document.getElementById(id);
+  const summary=()=>{const d=A.doctor($("bDoc").value);if(!d||!chosen){$("bSum").textContent="Pick a doctor, date and time.";$("bGo").disabled=true;return;}
+    $("bSum").innerHTML=`<div class="when">${fmtDate($("bDate").value)} · ${chosen}</div><div>${esc(d.name)}</div><div class="muted">${esc(lookup.dept(d.dept))} · Block ${esc(db.find("departments",d.dept)?.block||"")}</div><div>Consultation fee <b class="mono">${feeLabel(A.feeFor(d.id,"New"))}</b></div>`;$("bGo").disabled=false;};
+  const drawSlots=()=>{chosen=null;const r=A.slots($("bDoc").value,$("bDate").value);A.slotGrid($("bSlots"),r,s=>{chosen=s;summary();});$("bNote").textContent=r.ok?`${r.free} of ${r.slots.length} free`:"";summary();};
+  const fillDocs=()=>{$("bDoc").innerHTML=opts(A.doctors($("bDept").value).map(d=>({value:d.id,label:d.name})),bookPre.doctor);
+    const n=A.nextAvailable($("bDoc").value);$("bDate").value=bookPre.date&&bookPre.doctor===$("bDoc").value?bookPre.date:(n?n.date:T);drawSlots();};
+  $("bDept").onchange=()=>{bookPre={};fillDocs();};$("bDoc").onchange=()=>{bookPre={};const n=A.nextAvailable($("bDoc").value);$("bDate").value=n?n.date:T;drawSlots();};$("bDate").onchange=drawSlots;
+  fillDocs();
+  $("bGo").onclick=()=>{
+    const r=A.book({patient:me().id,doctor:$("bDoc").value,date:$("bDate").value,slot:chosen,source:"Patient portal",reason:$("bWhy").value.trim()});
+    if(!r.ok){$("bErr").textContent=r.msg;drawSlots();return;}
+    bookPre={};
+    modal({title:"Appointment booked",body:`<div class="appt-card"><div class="when">${fmtDate(r.appt.date)} · ${esc(r.appt.slot)}</div><div>${esc(lookup.staff(r.appt.doctor))} · ${esc(lookup.dept(r.appt.dept))}</div><div class="muted mono">Booking ${esc(r.appt.id)}</div></div>
+      <p style="margin-top:.8rem">${r.appt.fee?`Fee <b>${inr(r.appt.fee)}</b>. Pay now to skip the payment counter, or pay at the hospital.`:"No fee for this visit."}</p>`,
+      buttons:r.appt.fee?[{label:`Pay ${inr(r.appt.fee)} now`,cls:"primary",onClick:()=>{setTimeout(()=>payDialog(r.appt.id),50);}}]:[]});
+    start();goTab(2);
+  };
+}
+
+/* ---------- Pay (simulated) ---------- */
+function payDialog(id){
+  const a=A.find(id);
+  modal({title:`Pay ${inr(A.fee(a))} · ${a.id}`,body:`<p class="notice info" style="margin:0 0 .9rem">Demo payment. No card details are collected and no money is charged.</p>
+    <div class="field"><label>Payment method</label><div style="display:grid;gap:.4rem;margin-top:.2rem">${["UPI","Debit / credit card","Net banking"].map((m,i)=>`<label class="check" style="font-weight:500;color:var(--ink)"><input type="radio" name="pm" value="${m}" ${i?"":"checked"} style="width:18px;height:18px"> ${m}</label>`).join("")}</div></div>`,
+    buttons:[{label:`Pay ${inr(A.fee(a))}`,cls:"primary",onClick:d=>{const m=d.querySelector('input[name="pm"]:checked').value;const r=A.pay(id,m);if(!r.ok){toast(r.msg);return false;}
+      toast(`Paid · receipt ${r.payment.id}`);start();goTab(2);}}]});
+}
+
+/* ---------- My appointments: reschedule, cancel, pay, check in, track queue ---------- */
+function myAppts(){
+  const list=upcoming();
+  pane().innerHTML=`<div class="panel-body" style="display:grid;gap:1rem">${list.map(a=>{
+    const ch=A.patientCanChange(a),ci=A.checkInWindow(a),pos=["Checked In","In Consultation"].includes(a.status)?A.position(a.id):null;
+    const payable=["Unpaid"].includes(A.payStatus(a))&&A.fee(a)>0;
+    return `<div class="appt-card"><div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap"><div><div class="when">${fmtDate(a.date)} · ${esc(a.slot)}</div>
+      <div>${esc(lookup.staff(a.doctor))} · ${esc(lookup.dept(a.dept))}</div><div class="muted" style="font-size:.8rem">${esc(a.id)} · ${esc(a.type)}${a.reason?` · ${esc(a.reason)}`:""}</div></div>
+      <div class="actions" style="align-items:flex-start">${pill(a.status)}${pill(A.payStatus(a))}</div></div>
+      ${pos?`<div class="qcard now"><div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap"><div><div class="muted" style="font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Your token</div><div class="token">${esc(a.token)}</div></div>
+        <div style="font-size:.9rem">${pos.now?"<b>It's your turn — please go in.</b>":`<b>${pos.ahead}</b> ${pos.ahead===1?"person":"people"} ahead of you · about <b>${pos.wait} min</b><br><span class="muted">Now serving: ${pos.q.serving?esc(pos.q.serving.token):"—"}</span>`}</div>
+        <button class="btn sm" data-refresh style="margin-left:auto">Refresh</button></div></div>`:""}
+      <div class="actions">
+        ${payable?`<button class="btn sm primary" data-pay="${a.id}">Pay ${inr(A.fee(a))}</button>`:""}
+        ${a.status==="Booked"?`<button class="btn sm ${ci.ok?"primary":""}" data-in="${a.id}" ${ci.ok?"":`title="${esc(ci.msg)}"`}>Check in</button>`:""}
+        ${ch.ok?`<button class="btn sm" data-rs="${a.id}">Reschedule</button><button class="btn sm danger" data-cx="${a.id}">Cancel</button>`:""}
+      </div>
+      ${a.status==="Booked"&&!ci.ok?`<p class="muted" style="font-size:.78rem;margin:0">${esc(ci.msg)}</p>`:""}
+      ${a.status==="Booked"&&!ch.ok?`<p class="muted" style="font-size:.78rem;margin:0">${esc(ch.msg)}</p>`:""}</div>`;}).join("")||`<p class="muted">No upcoming appointments. <button class="btn link" data-go="0">Find a doctor</button></p>`}</div>`;
+  const P=pane();
+  P.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>goTab(+b.dataset.go));
+  P.querySelectorAll("[data-refresh]").forEach(b=>b.onclick=myAppts);
+  P.querySelectorAll("[data-pay]").forEach(b=>b.onclick=()=>payDialog(b.dataset.pay));
+  P.querySelectorAll("[data-in]").forEach(b=>b.onclick=()=>{const r=A.checkIn(b.dataset.in);if(!r.ok){toast(r.msg);return;}toast(`Checked in · your token is ${r.appt.token}`);myAppts();});
+  P.querySelectorAll("[data-rs]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.rs);
+    A.pickSlot({title:`Reschedule ${a.id}`,doc:a.doctor,date:a.date,ignore:a.id,confirmLabel:"Move my appointment",note:`Currently ${fmtDate(a.date)} at ${a.slot} with ${lookup.staff(a.doctor)}.`,
+      onConfirm:(date,slot)=>{const r=A.reschedule(a.id,date,slot);if(r.ok){toast(`Moved to ${fmtDate(date)} ${slot}`);start();goTab(2);}return r;}});});
+  P.querySelectorAll("[data-cx]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.cx);
+    modal({title:`Cancel ${a.id}?`,body:`<p>${fmtDate(a.date)} at ${esc(a.slot)} with ${esc(lookup.staff(a.doctor))}.</p>${a.pay==="Paid"?`<p>Your payment of <b>${inr(a.paidAmount??A.fee(a))}</b> will be refunded to the original payment method.</p>`:""}
+      <div class="field"><label for="cxWhy">Reason (optional)</label><input id="cxWhy"></div>`,
+      buttons:[{label:"Cancel appointment",cls:"primary",onClick:d=>{const r=A.cancel(a.id,{reason:d.querySelector("#cxWhy").value.trim(),by:"Patient"});if(!r.ok){toast(r.msg);return false;}toast(r.refund?`Cancelled · refund ${r.refund.id} requested`:"Appointment cancelled");start();goTab(2);}}]});});
+  clearInterval(window._ppTimer);
+  if(list.some(a=>["Checked In","In Consultation"].includes(a.status)))window._ppTimer=setInterval(()=>{if(tabIndex===2&&!document.querySelector("dialog"))myAppts();},30000);
+}
+
+/* ---------- History and follow-ups ---------- */
+function history(){
+  const list=past(),c=A.cfg();
+  pane().innerHTML=`<div class="panel-body" style="display:grid;gap:1rem">${list.map(a=>{
+    const fuFree=a.status==="Completed"&&Portal.daysBetween(a.date,T)<=c.followUpFreeDays;
+    return `<div class="appt-card"><div style="display:flex;justify-content:space-between;gap:.6rem;flex-wrap:wrap"><div><div class="when">${fmtDate(a.date)} · ${esc(a.slot)}</div>
+      <div>${esc(lookup.staff(a.doctor))} · ${esc(lookup.dept(a.dept))}</div><div class="muted" style="font-size:.8rem">${esc(a.id)} · ${esc(a.type)}${a.token?` · token ${esc(a.token)}`:""}</div></div>
+      <div class="actions" style="align-items:flex-start">${pill(a.status)}${pill(A.payStatus(a))}</div></div>
+      ${a.diagnosis||a.notes?`<div style="font-size:.88rem">${a.diagnosis?`<b>${esc(a.diagnosis)}</b>`:""}${a.notes?`<div class="muted">${esc(a.notes)}</div>`:""}</div>`:""}
+      ${a.followUpAdvised?`<div class="notice info" style="margin:0">Your doctor advised a follow-up by ${fmtDate(a.followUpAdvised)}.</div>`:""}
+      <div class="actions">${a.status==="Completed"?`<button class="btn sm ${a.followUpAdvised?"primary":""}" data-fu="${a.id}">Book follow-up${fuFree?` (${feeLabel(c.fees.followUp)})`:""}</button>`:""}<button class="btn sm link" data-log="${a.id}">Details</button></div></div>`;}).join("")||'<p class="muted">No past appointments yet.</p>'}</div>`;
+  pane().querySelectorAll("[data-fu]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.fu);
+    A.pickSlot({title:`Follow-up with ${lookup.staff(a.doctor)}`,doc:a.doctor,date:a.followUpAdvised||addDays(T,1),confirmLabel:"Book follow-up",
+      note:Portal.daysBetween(a.date,T)<=c.followUpFreeDays?`Follow-ups within ${c.followUpFreeDays} days of your visit cost ${feeLabel(c.fees.followUp)}.`:"",
+      onConfirm:(date,slot)=>{const r=A.followUp(a.id,date,slot,"Patient portal");if(r.ok){toast(`Follow-up booked for ${fmtDate(date)} ${slot}`);start();goTab(2);}return r;}});});
+  pane().querySelectorAll("[data-log]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.log);modal({title:`${a.id} · ${fmtDate(a.date)}`,body:A.logHTML(a)});});
+}
+
+me()?start():signIn();
+</script>
+</body>
+</html>

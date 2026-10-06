@@ -27,6 +27,19 @@ All names, phone numbers, doctors and figures are placeholders.
 | 13 | notifications.html | SMS / email / app templates, alert rules, delivery log |
 
 Shared code: `portal/assets/portal.css`, `portal.js` (shell, store, table component) and `data.js` (sample data).
+### Appointment management
+
+Three areas share one appointment engine (`portal/assets/appt.js`), so a booking made anywhere shows up everywhere:
+
+| Area | Where | What it does |
+|---|---|---|
+| Patient Portal | `patient/index.html` (public; linked from the website) | Sign in with mobile + date of birth or register; find a doctor, book, reschedule, cancel, pay (simulated), check in, track the queue, view history, book follow-ups |
+| Doctor Portal | `portal/doctor.html` (Doctor role) | Today's appointments and patient queue, call next, consultation status, complete with notes and follow-up, week calendar, patient details, availability (weekly pattern and unavailable dates) |
+| Hospital Admin Portal | `portal/appointment-admin.html` (Super Admin, Front Office; Nurse can manage queues) | Dashboard, doctor schedules, slot configuration, department OPD days, holidays and leave, walk-ins with tokens, cancellations and refunds, queue management, reports with CSV export |
+| Front Desk Booking | `portal/appointments.html` | Counter booking, payment, check-in, reschedule and cancel using the same rules |
+
+Rules live in the slot configuration: session times, slot length, patients per slot, booking window, change cut-off, check-in window and fees (general, specialist, follow-up). Payments and refunds are simulated: no card details are collected and no money moves.
+
 ### Sign-in
 
 The public website (`index.html`) is the landing page and needs no login. The staff portal is only reachable through `portal/login.html` (linked as "Staff login" in the site footer); every portal page sends signed-out visitors there.

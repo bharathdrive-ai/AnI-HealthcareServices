@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="assets/portal.css">
 <script src="assets/data.js"></script>
 <script src="assets/portal.js"></script>
+<script src="assets/appt.js"></script>
 </head>
 <body>
 <div id="content">
@@ -44,7 +45,7 @@
 <script>
 const {db,esc,pill,crud,kpis,toast,opts,lookup,today,addDays,fmtDate,modal,formHTML,readForm,uid}=Portal;
 const T=today();
-const SLOTS=[];for(let m=9*60;m<13*60;m+=15)SLOTS.push(`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`);
+const A=window.Appt; // shared rules: slot configuration, doctor availability, fees, tokens, payments
 const $=id=>document.getElementById(id);
 let chosen=null;
 
@@ -59,26 +60,11 @@ function refreshKpis(){
   ]);
 }
 
-function availability(doc,date){
-  if(!doc||!date) return {ok:false,msg:"Choose a doctor and date."};
-  if(date<T) return {ok:false,msg:"Pick today or a later date."};
-  if(new Date(date+"T00:00").getDay()===0) return {ok:false,msg:"OPD is closed on Sundays."};
-  const d=db.find("staff",doc);
-  const hol=db.get("holidays").find(h=>h.status==="Active"&&h.date===date&&(h.scope==="Hospital"||(h.scope==="Department"&&h.dept===d.dept)));
-  if(hol) return {ok:false,msg:`Holiday: ${hol.name}.`};
-  const lv=db.get("leaves").find(l=>l.staff===doc&&l.status==="Approved"&&l.from<=date&&l.to>=date);
-  if(lv) return {ok:false,msg:`${d.name} is on ${lv.type.toLowerCase()}.`};
-  return {ok:true};
-}
 function drawSlots(){
-  const doc=$("bDoc").value,date=$("bDate").value,av=availability(doc,date);
   chosen=null;
-  if(!av.ok){$("slots").innerHTML=`<p class="muted" style="grid-column:1/-1;margin:0">${esc(av.msg)}</p>`;$("availNote").textContent="";return;}
-  const taken=db.get("appointments").filter(a=>a.doctor===doc&&a.date===date&&a.status!=="Cancelled").map(a=>a.slot);
-  const now=new Date(),nowM=now.getHours()*60+now.getMinutes();
-  $("slots").innerHTML=SLOTS.map(s=>{const [h,m]=s.split(":").map(Number);const past=date===T&&h*60+m<=nowM;const dis=taken.includes(s)||past;return `<button type="button" class="slot" data-s="${s}" ${dis?"disabled":""} aria-pressed="false">${s}</button>`;}).join("");
-  $("availNote").textContent=`${SLOTS.length-$("slots").querySelectorAll(".slot:disabled").length} of ${SLOTS.length} free`;
-  $("slots").querySelectorAll(".slot:not(:disabled)").forEach(b=>b.onclick=()=>{$("slots").querySelectorAll(".slot").forEach(x=>x.setAttribute("aria-pressed",x===b));chosen=b.dataset.s;});
+  const r=A.slots($("bDoc").value,$("bDate").value);
+  A.slotGrid($("slots"),r,t=>{chosen=t;});
+  $("availNote").textContent=r.ok?`${r.free} of ${r.slots.length} free · fee ${Portal.inr(A.feeFor($("bDoc").value,$("bType").value))}`:"";
 }
 function fillDocs(){
   const dept=$("bDept").value;
@@ -89,9 +75,9 @@ function fillDocs(){
 function fillPatients(sel){$("bPatient").innerHTML=`<option value="">Choose a patient</option>`+opts(lookup.patients(),sel);}
 
 $("bDept").innerHTML=opts(lookup.depts().filter(d=>lookup.doctors().some(x=>db.find("staff",x.value).dept===d.value)));
-$("bDate").min=T;$("bDate").value=addDays(T,new Date().getHours()>=12?1:0);
+$("bDate").min=T;$("bDate").max=addDays(T,A.cfg().bookingWindowDays);$("bDate").value=addDays(T,new Date().getHours()>=12?1:0);
 fillPatients();fillDocs();
-$("bDept").onchange=fillDocs;$("bDoc").onchange=drawSlots;$("bDate").onchange=drawSlots;
+$("bDept").onchange=fillDocs;$("bDoc").onchange=drawSlots;$("bDate").onchange=drawSlots;$("bType").onchange=drawSlots;
 
 $("newPat").onclick=()=>{
   const F=[{k:"name",label:"Full name",required:true},{k:"phone",label:"Mobile",required:true,pattern:"^[6-9]\\d{9}$",patternMsg:"10-digit mobile number."},
@@ -105,29 +91,53 @@ $("newPat").onclick=()=>{
 };
 
 $("bookBtn").onclick=()=>{
-  const p=$("bPatient").value,doc=$("bDoc").value,date=$("bDate").value,err=$("bookErr");
-  if(!p){err.textContent="Choose a patient.";return;}
-  if(!availability(doc,date).ok){err.textContent="That doctor isn't available on this date.";return;}
+  const err=$("bookErr");
+  if(!$("bPatient").value){err.textContent="Choose a patient.";return;}
   if(!chosen){err.textContent="Pick a time slot.";return;}
+  const r=A.book({patient:$("bPatient").value,doctor:$("bDoc").value,date:$("bDate").value,slot:chosen,type:$("bType").value,source:"Front desk",reason:$("bReason").value.trim()});
+  if(!r.ok){err.textContent=r.msg;drawSlots();return;}
   err.textContent="";
-  const list=db.get("appointments");
-  const rec={id:uid("APT","appointments"),patient:p,doctor:doc,dept:db.find("staff",doc).dept,date,slot:chosen,type:$("bType").value,status:"Booked",reason:$("bReason").value.trim()};
-  list.unshift(rec);db.set("appointments",list);
-  toast(`Booked ${rec.id}: ${lookup.patient(p)} at ${chosen}, ${fmtDate(date)}`);
+  toast(`Booked ${r.appt.id}: ${lookup.patient(r.appt.patient)} at ${r.appt.slot}, ${fmtDate(r.appt.date)} · fee ${Portal.inr(r.appt.fee)}`);
   $("bReason").value="";drawSlots();table.render();refreshKpis();
 };
 
-const NEXT={"Booked":["Checked In","Cancelled","No Show"],"Checked In":["In Consultation","Cancelled"],"In Consultation":["Completed"]};
+function takePayment(id){
+  const a=A.find(id);
+  modal({title:`Take payment · ${a.id}`,body:`<p>${esc(lookup.patient(a.patient))} · ${fmtDate(a.date)} ${esc(a.slot)} · <b>${Portal.inr(A.fee(a))}</b></p>
+    <div class="field"><label for="pmM">Method</label><select id="pmM"><option>Cash at counter</option><option>UPI</option><option>Debit / credit card</option></select></div>
+    <p class="muted" style="font-size:.78rem;margin:.6rem 0 0">Records the payment in the portal. No money is processed here.</p>`,
+    buttons:[{label:"Record payment",cls:"primary",onClick:d=>{const r=A.pay(id,d.querySelector("#pmM").value);if(!r.ok){toast(r.msg);return false;}toast(`Payment recorded · ${r.payment.id}`);table.render();}}]});
+}
+function rowButtons(a){
+  const b=[];
+  if(A.payStatus(a)==="Unpaid"&&A.fee(a)>0&&!["Cancelled","No Show"].includes(a.status))b.push(["pay","Take payment"]);
+  if(a.status==="Booked"){if(a.date===T)b.push(["in","Check in"]);b.push(["rs","Reschedule"],["ns","No show"],["cx","Cancel"]);}
+  if(a.status==="Checked In")b.push(["start","Start"],["cx","Cancel"]);
+  if(a.status==="In Consultation")b.push(["done","Complete"]);
+  return b.map(([k,l])=>`<button class="btn sm link ${k==="cx"?"danger":""}" data-a="${k}" data-id="${a.id}">${l}</button>`).join("");
+}
+function doAction(k,id){
+  const after=r=>{if(!r.ok){toast(r.msg);return;}table.render();refreshKpis();drawSlots();};
+  if(k==="pay")return takePayment(id);
+  if(k==="in"){const r=A.checkIn(id,{force:true});if(r.ok)toast(`Checked in · token ${r.appt.token}`);return after(r);}
+  if(k==="start"){const r=A.start(id);if(r.ok)toast(`${r.appt.token} in consultation`);return after(r);}
+  if(k==="done"){const r=A.complete(id,{});if(r.ok)toast(`${r.appt.id} completed`);return after(r);}
+  if(k==="ns"){const r=A.noShow(id);if(r.ok)toast(`${r.appt.id} marked no-show`);return after(r);}
+  if(k==="rs"){const a=A.find(id);return A.pickSlot({title:`Reschedule ${a.id} · ${lookup.patient(a.patient)}`,doc:a.doctor,date:a.date,ignore:a.id,confirmLabel:"Reschedule",
+    onConfirm:(date,slot)=>{const r=A.reschedule(id,date,slot);if(r.ok){toast(`Moved to ${fmtDate(date)} ${slot}`);after(r);}return r;}});}
+  if(k==="cx"){const a=A.find(id);modal({title:`Cancel ${a.id}?`,body:`<p>${esc(lookup.patient(a.patient))} · ${fmtDate(a.date)} ${esc(a.slot)}${a.pay==="Paid"?` · a refund of <b>${Portal.inr(a.paidAmount??A.fee(a))}</b> will be created`:""}.</p><div class="field"><label for="cxR">Reason</label><input id="cxR"></div>`,
+    buttons:[{label:"Cancel appointment",cls:"primary",onClick:d=>{const r=A.cancel(id,{reason:d.querySelector("#cxR").value.trim(),by:"Front desk"});if(r.ok)toast(r.refund?`Cancelled · refund ${r.refund.id} created`:"Cancelled");after(r);if(!r.ok)return false;}}]});}
+}
 const table=crud("#list",{key:"appointments",idPrefix:"APT",noun:"appointment",title:"Appointments",readOnly:true,searchPlaceholder:"Search patient, doctor or ID",
   filters:[{k:"date",label:"Dates",options:()=>[...new Set(db.get("appointments").map(a=>a.date))].sort().map(d=>({value:d,label:fmtDate(d)+(d===T?" (today)":"")}))},{k:"status",label:"Statuses",options:["Booked","Checked In","In Consultation","Completed","Cancelled","No Show"]}],
   columns:[{k:"slot",label:"Time",fmt:(v,r)=>`<span class="mono">${esc(v)}</span><div class="muted" style="font-size:.72rem">${fmtDate(r.date)}</div>`},
-    {k:"patient",label:"Patient",fmt:(v,r)=>`<b>${esc(lookup.patient(v))}</b><div class="muted mono" style="font-size:.72rem">${esc(v)} · ${esc(r.type)}</div>`,text:r=>lookup.patient(r.patient)+" "+r.patient},
+    {k:"patient",label:"Patient",fmt:(v,r)=>`<b>${esc(lookup.patient(v))}</b><div class="muted mono" style="font-size:.72rem">${esc(v)} · ${esc(r.type)} · ${esc(r.source||"Front desk")}</div>`,text:r=>lookup.patient(r.patient)+" "+r.patient},
     {k:"doctor",label:"Doctor",fmt:(v,r)=>`${esc(lookup.staff(v))}<div class="muted" style="font-size:.72rem">${esc(lookup.dept(r.dept))}</div>`,text:r=>lookup.staff(r.doctor)+" "+r.id},
+    {k:"token",label:"Token",fmt:v=>v?`<span class="mono">${esc(v)}</span>`:'<span class="muted">—</span>'},
+    {k:"pay",label:"Payment",fmt:(v,r)=>`${pill(A.payStatus(r))}<div class="muted mono" style="font-size:.72rem">${Portal.inr(A.fee(r))}</div>`,text:r=>A.payStatus(r)},
     {k:"status",label:"Status",fmt:pill}],
-  rowActions:r=>(NEXT[r.status]||[]).map(s=>`<button class="btn sm link" data-st="${s}" data-id="${r.id}">${s==="Checked In"?"Check in":s==="In Consultation"?"Start":s==="Completed"?"Complete":s==="No Show"?"No show":"Cancel"}</button>`).join(""),
-  afterRender:tb=>tb.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{
-    const list=db.get("appointments"),a=list.find(x=>x.id===b.dataset.id);a.status=b.dataset.st;db.set("appointments",list);table.render();refreshKpis();drawSlots();toast(`${a.id} → ${a.status}`);
-  }),
+  rowActions:rowButtons,
+  afterRender:tb=>tb.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>doAction(b.dataset.a,b.dataset.id)),
 });
 document.querySelector('#list [data-f="date"]').value=T;document.querySelector('#list [data-f="date"]').dispatchEvent(new Event("change"));
 refreshKpis();

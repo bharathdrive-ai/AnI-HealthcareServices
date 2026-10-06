@@ -268,3 +268,25 @@ button.who:hover{border-color:var(--line)}
 .login-brand .back-public{color:#7fd3e0}
 .login-main{position:relative}
 .login-main .theme-btn{position:absolute;top:1rem;right:16px}
+
+/* Appointment management */
+.slot-session{grid-column:1/-1;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:.3rem}
+.qcard{border:1px solid var(--line);border-radius:10px;padding:1rem;background:var(--surface-2)}
+.qcard.now{border-color:var(--scrub);background:var(--scrub-soft)}
+.token{font-family:var(--f-mono);font-weight:700;font-size:1.5rem;color:var(--scrub);letter-spacing:.02em}
+.token.sm{font-size:.95rem}
+.actions{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+.week{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:.6rem;overflow-x:auto;padding-bottom:.3rem}
+.day{border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:0;display:flex;flex-direction:column}
+.day h4{margin:0;padding:.5rem .6rem;font-size:.8rem;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:.3rem}
+.day.today h4{background:var(--scrub-soft);color:var(--scrub)}
+.day.off{background:var(--surface-2)}
+.day .ap{display:block;margin:.35rem .4rem 0;padding:.35rem .45rem;border-radius:6px;font-size:.75rem;background:var(--surface-2);border-left:3px solid var(--line);text-align:left;width:calc(100% - .8rem);border-top:0;border-right:0;border-bottom:0;color:var(--ink);font-family:inherit;cursor:pointer}
+.day .ap b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day .ap.s-Booked{border-left-color:var(--info)}.day .ap.s-Checked{border-left-color:var(--warn)}.day .ap.s-In{border-left-color:var(--scrub)}
+.day .ap.s-Completed{border-left-color:var(--ok);opacity:.8}.day .ap.s-Cancelled,.day .ap.s-No{border-left-color:var(--alert);opacity:.6;text-decoration:line-through}
+.day .empty{padding:.8rem .5rem;font-size:.75rem}
+.avail-grid td select{width:auto;min-width:5.5rem}
+.notice{padding:.65rem .8rem;border-radius:6px;font-size:.85rem;background:var(--alert-soft);color:var(--alert)}
+.notice.info{background:var(--info-soft);color:var(--info)}
+.notice.ok{background:var(--ok-soft);color:var(--ok)}

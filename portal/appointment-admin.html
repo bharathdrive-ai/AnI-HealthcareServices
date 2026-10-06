@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Appointment Admin · AnI-HealthcareServices Portal</title>
+<link rel="icon" href="../assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="../assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<meta name="theme-color" content="#1f6f61">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/portal.css">
+<script src="assets/data.js"></script>
+<script src="assets/portal.js"></script>
+<script src="assets/appt.js"></script>
+</head>
+<body>
+<div id="content">
+  <div class="panel">
+    <div id="tabs"></div>
+    <div id="pane"></div>
+  </div>
+</div>
+<script>
+const {db,esc,pill,kpis,tabs,toast,modal,opts,lookup,today,addDays,fmtDate,inr,num,daysBetween,barChart,hbars,auth,audit,uid,formHTML,readForm}=Portal;
+const A=window.Appt,T=today(),me=auth.user();
+const pane=document.getElementById("pane");
+let tabIndex=0,dashDate=T,schedWeek=T,qDept="";
+const DEPTS=()=>db.get("departments").filter(d=>d.status==="Active");
+const live=a=>!["Cancelled"].includes(a.status);
+const minsBetween=(a,b)=>a&&b?A.toMin(b)-A.toMin(a):null;
+const panelWrap=html=>`<div class="panel-body" style="display:grid;gap:1.25rem">${html}</div>`;
+const card=(title,body,extra="")=>`<div class="panel"><div class="panel-head"><h2>${esc(title)}</h2><span class="spacer"></span>${extra}</div>${body}</div>`;
+const csv=(name,head,rows)=>{const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["﻿"+[head,...rows].map(r=>r.map(q).join(",")).join("\r\n")],{type:"text/csv"}));a.download=`${name}-${T}.csv`;document.body.appendChild(a);a.click();a.remove();toast(`Exported ${rows.length} rows`);};
+function rerender(){[dashboard,doctorSchedule,slotConfig,deptSchedule,holidayLeave,walkIns,cancellations,queueMgmt,reports][tabIndex]();}
+
+/* ---------- 1. Appointment dashboard ---------- */
+function dashboard(){
+  const L=A.all().filter(a=>a.date===dashDate);
+  const pays=L.filter(a=>a.pay==="Paid").reduce((s,a)=>s+(a.paidAmount??A.fee(a)),0);
+  const pendingRefunds=db.get("refunds").filter(r=>r.status==="Pending");
+  const conflicts=A.all().filter(a=>a.status==="Booked"&&a.date>=T&&!A.availability(a.doctor,a.date).ok);
+  const byDept=DEPTS().map(d=>{const l=L.filter(a=>a.dept===d.id&&live(a));
+    const docs=A.doctors(d.id).filter(x=>A.availability(x.id,dashDate,{allowPast:true}).ok);
+    const cap=docs.reduce((s,x)=>{const r=A.slots(x.id,dashDate);return s+(r.ok?r.slots.length:0);},0);
+    return {d,l,docs:docs.length,cap};}).filter(x=>x.l.length||x.docs);
+  pane.innerHTML=`<div class="toolbar"><label for="dDate" style="margin:0">Day</label><input id="dDate" type="date" value="${dashDate}" style="width:auto"><button class="btn sm" id="dToday">Today</button></div>
+  <div class="panel-body" style="display:grid;gap:1.25rem"><div id="dk"></div>
+  ${conflicts.length?`<div class="notice"><b>${conflicts.length} booked appointment(s) fall on days the doctor is no longer available.</b> Reschedule or move them below.</div>`:""}
+  <div class="grid-2">
+    ${card("By department",`<div class="table-wrap"><table class="dt"><thead><tr><th class="noclick">Department</th><th class="noclick" style="text-align:right">Doctors in</th><th class="noclick" style="text-align:right">Booked</th><th class="noclick" style="text-align:right">Waiting</th><th class="noclick" style="text-align:right">Done</th><th class="noclick" style="text-align:right">Slots used</th></tr></thead><tbody>
+      ${byDept.map(x=>`<tr><td>${esc(x.d.name)}</td><td class="num">${x.docs}</td><td class="num">${x.l.length}</td><td class="num">${x.l.filter(a=>a.status==="Checked In").length}</td><td class="num">${x.l.filter(a=>a.status==="Completed").length}</td><td class="num">${x.cap?Math.round(x.l.length/x.cap*100)+"%":"—"}</td></tr>`).join("")||'<tr><td colspan="6" class="empty">No OPD on this day.</td></tr>'}</tbody></table></div>`)}
+    ${card("Status",`<div id="dStatus"></div>`)}
+  </div>
+  ${conflicts.length?card("Needs rescheduling",`<ul class="list">${conflicts.map(a=>`<li><div class="grow"><b>${esc(lookup.patient(a.patient))}</b> · ${fmtDate(a.date)} ${esc(a.slot)} with ${esc(lookup.staff(a.doctor))}<div class="sub">${esc(A.availability(a.doctor,a.date).msg)}</div></div><div class="actions"><button class="btn sm" data-resched="${a.id}">Reschedule</button><button class="btn sm" data-move="${a.id}">Move doctor</button></div></li>`).join("")}</ul>`):""}
+  </div>`;
+  kpis("#dk",[
+    {l:"Appointments",n:L.filter(live).length,d:`${L.filter(a=>a.source==="Online").length} online · ${L.filter(a=>a.source==="Walk-in").length} walk-in`},
+    {l:"Waiting",n:L.filter(a=>a.status==="Checked In").length,d:`${L.filter(a=>a.status==="In Consultation").length} in consultation`},
+    {l:"Completed",n:L.filter(a=>a.status==="Completed").length},
+    {l:"Cancelled",n:L.filter(a=>a.status==="Cancelled").length},
+    {l:"No-shows",n:L.filter(a=>a.status==="No Show").length,t:L.some(a=>a.status==="No Show")?"down":""},
+    {l:"Collected",n:inr(pays),d:"Consultation fees paid"},
+    {l:"Refunds pending",n:pendingRefunds.length,d:inr(pendingRefunds.reduce((s,r)=>s+r.amount,0)),t:pendingRefunds.length?"down":""},
+  ]);
+  hbars("#dStatus",["Booked","Checked In","In Consultation","Completed","Cancelled","No Show"].map(s=>({l:s,v:L.filter(a=>a.status===s).length,tone:s==="Cancelled"||s==="No Show"?"alert":s==="Checked In"?"warn":""})));
+  pane.querySelector("#dDate").onchange=e=>{dashDate=e.target.value||T;dashboard();};
+  pane.querySelector("#dToday").onclick=()=>{dashDate=T;dashboard();};
+  bindResched(pane);
+}
+function bindResched(root){
+  root.querySelectorAll("[data-resched]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.resched);
+    A.pickSlot({title:`Reschedule ${a.id} · ${lookup.patient(a.patient)}`,doc:a.doctor,date:a.date,ignore:a.id,confirmLabel:"Reschedule",
+      onConfirm:(date,slot)=>{const r=A.reschedule(a.id,date,slot);if(r.ok){toast(`${a.id} moved to ${fmtDate(date)} ${slot}`);rerender();}return r;}});});
+  root.querySelectorAll("[data-move]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.move);
+    const others=A.doctors(a.dept).filter(d=>d.id!==a.doctor);
+    if(!others.length){toast("No other doctor in this department.");return;}
+    modal({title:`Move ${a.id} to another doctor`,body:`<div class="field"><label for="mvDoc">Doctor in ${esc(lookup.dept(a.dept))}</label><select id="mvDoc">${opts(others.map(d=>({value:d.id,label:`${d.name}${A.availability(d.id,a.date).ok?"":" (not available that day)"}`})))}</select></div>`,
+      buttons:[{label:"Move",cls:"primary",onClick:d=>{const r=A.reassign(a.id,d.querySelector("#mvDoc").value);if(!r.ok){toast(r.msg);return false;}toast(`${a.id} moved to ${lookup.staff(r.appt.doctor)}`);rerender();}}]});});
+}
+
+/* ---------- 2. Doctor schedule ---------- */
+function doctorSchedule(){
+  const days=A.weekDays(schedWeek).slice(0,6);
+  const AV=db.get("doctorAvail");
+  const docs=A.doctors().filter(d=>!qDept||d.dept===qDept).sort((x,y)=>lookup.dept(x.dept).localeCompare(lookup.dept(y.dept)));
+  pane.innerHTML=`<div class="toolbar"><select id="sDept" style="width:auto" aria-label="Department"><option value="">All departments</option>${opts(DEPTS().map(d=>({value:d.id,label:d.name})),qDept)}</select>
+    <button class="btn sm" id="sPrev" aria-label="Previous week">‹</button><b>Week of ${fmtDate(days[0])}</b><button class="btn sm" id="sNext" aria-label="Next week">›</button>
+    <span style="flex:1"></span><button class="btn primary" id="sSave">Save weekly patterns</button></div>
+    <div class="table-wrap"><table class="dt avail-grid"><thead><tr><th class="noclick">Doctor</th>${days.map(d=>`<th class="noclick">${new Date(d+"T00:00").toLocaleDateString("en-IN",{weekday:"short",day:"2-digit"})}</th>`).join("")}</tr></thead><tbody>
+    ${docs.map(doc=>{const rec=AV.find(x=>x.id===doc.id)||{week:["Full","Full","Full","Full","Full","Full"]};
+      return `<tr><td><b>${esc(doc.name)}</b><div class="muted" style="font-size:.72rem">${esc(lookup.dept(doc.dept))}</div></td>${days.map((d,i)=>{
+        const av=A.availability(doc.id,d,{allowPast:true}),n=A.all().filter(a=>a.doctor===doc.id&&a.date===d&&live(a)).length;
+        const deptClosed=!A.deptOpen(doc.dept,d);
+        return `<td>${deptClosed?'<span class="muted">No OPD</span>':`<select data-doc="${doc.id}" data-day="${i}" aria-label="${esc(doc.name)} ${A.DAYS[i+1]}">${opts([{value:"Full",label:"Full"},{value:"AM",label:"AM"},{value:"PM",label:"PM"},{value:"Off",label:"Off"}],rec.week[i])}</select>`}
+          <div style="font-size:.72rem;margin-top:.2rem" class="${av.ok?"muted":""}">${n?`<b>${n}</b> booked`:""}${!av.ok&&!deptClosed&&!/doesn't consult/.test(av.msg)?` <span style="color:var(--alert)">${esc(/leave/.test(av.msg)?"On leave":/^Holiday/.test(av.msg)?"Holiday":"Closed")}</span>`:""}</div></td>`;}).join("")}</tr>`;}).join("")}
+    </tbody></table></div>`;
+  pane.querySelector("#sDept").onchange=e=>{qDept=e.target.value;doctorSchedule();};
+  pane.querySelector("#sPrev").onclick=()=>{schedWeek=addDays(days[0],-7);doctorSchedule();};
+  pane.querySelector("#sNext").onclick=()=>{schedWeek=addDays(days[0],7);doctorSchedule();};
+  pane.querySelector("#sSave").onclick=()=>{
+    const L=db.get("doctorAvail");
+    pane.querySelectorAll("select[data-doc]").forEach(s=>{let r=L.find(x=>x.id===s.dataset.doc);if(!r){r={id:s.dataset.doc,week:["Full","Full","Full","Full","Full","Full"]};L.push(r);}r.week[+s.dataset.day]=s.value;});
+    db.set("doctorAvail",L);audit(me.username,"Updated doctor weekly schedules");toast("Doctor schedules saved");doctorSchedule();
+  };
+}
+
+/* ---------- 3. Slot configuration ---------- */
+function slotConfig(){
+  const c=A.cfg();
+  const perDay=()=>{const m=(s,e)=>Math.max(0,Math.floor((A.toMin(e)-A.toMin(s))/c.slotMinutes));return m(c.sessions.AM.start,c.sessions.AM.end)+m(c.sessions.PM.start,c.sessions.PM.end);};
+  pane.innerHTML=panelWrap(`<div class="grid-2">
+    <div><h3 style="font-size:.95rem;margin-bottom:.8rem">Sessions and slots</h3><div class="form-grid">
+      <div class="field"><label for="cSlot">Slot length</label><select id="cSlot">${opts([10,15,20,30].map(v=>({value:v,label:v+" minutes"})),c.slotMinutes)}</select></div>
+      <div class="field"><label for="cMax">Patients per slot</label><select id="cMax">${opts([1,2,3].map(v=>({value:v,label:String(v)})),c.maxPerSlot)}</select></div>
+      <div class="field"><label for="cAmS">Morning starts</label><input id="cAmS" type="time" value="${c.sessions.AM.start}"></div>
+      <div class="field"><label for="cAmE">Morning ends</label><input id="cAmE" type="time" value="${c.sessions.AM.end}"></div>
+      <div class="field"><label for="cPmS">Afternoon starts</label><input id="cPmS" type="time" value="${c.sessions.PM.start}"></div>
+      <div class="field"><label for="cPmE">Afternoon ends</label><input id="cPmE" type="time" value="${c.sessions.PM.end}"></div>
+      <div class="field"><label for="cWin">Booking window (days ahead)</label><input id="cWin" type="number" min="1" max="90" value="${c.bookingWindowDays}"></div>
+      <div class="field"><label for="cCut">Patients can change until (hours before)</label><input id="cCut" type="number" min="0" max="48" value="${c.cancelCutoffHours}"></div>
+      <div class="field"><label for="cChk">Check-in opens (minutes before slot)</label><input id="cChk" type="number" min="0" max="240" value="${c.checkInBeforeMins}"></div>
+    </div></div>
+    <div><h3 style="font-size:.95rem;margin-bottom:.8rem">Consultation fees</h3><div class="form-grid">
+      <div class="field"><label for="fGen">General consultation (₹)</label><input id="fGen" type="number" min="0" value="${c.fees.general}"></div>
+      <div class="field"><label for="fSpec">Specialist consultation (₹)</label><input id="fSpec" type="number" min="0" value="${c.fees.specialist}"></div>
+      <div class="field"><label for="fFu">Follow-up (₹)</label><input id="fFu" type="number" min="0" value="${c.fees.followUp}"></div>
+      <div class="field"><label for="fFuD">Follow-up fee applies within (days)</label><input id="fFuD" type="number" min="0" max="90" value="${c.followUpFreeDays}"></div>
+      <div class="field full"><label>Departments charged the general fee</label><div style="display:flex;flex-wrap:wrap;gap:.4rem .9rem">${DEPTS().map(d=>`<label class="check" style="font-weight:400;color:var(--ink)"><input type="checkbox" data-gen="${d.id}" style="width:16px;height:16px" ${c.generalDepts.includes(d.id)?"checked":""}> ${esc(d.name)}</label>`).join("")}</div></div>
+    </div></div></div>
+    <div class="notice info" id="cPrev">Currently <b>${perDay()}</b> slots per doctor on a full day. Existing bookings keep their times when you change these settings.</div>
+    <div><button class="btn primary" id="cSave">Save slot configuration</button> <span class="err" id="cErr"></span></div>`);
+  const $=id=>pane.querySelector("#"+id);
+  $("cSave").onclick=()=>{
+    const v={slotMinutes:+$("cSlot").value,maxPerSlot:+$("cMax").value,sessions:{AM:{start:$("cAmS").value,end:$("cAmE").value},PM:{start:$("cPmS").value,end:$("cPmE").value}},
+      bookingWindowDays:+$("cWin").value,cancelCutoffHours:+$("cCut").value,checkInBeforeMins:+$("cChk").value,
+      fees:{general:+$("fGen").value,specialist:+$("fSpec").value,followUp:+$("fFu").value},followUpFreeDays:+$("fFuD").value,
+      generalDepts:[...pane.querySelectorAll("[data-gen]:checked")].map(x=>x.dataset.gen)};
+    const err=$("cErr");
+    if(A.toMin(v.sessions.AM.start)>=A.toMin(v.sessions.AM.end))return err.textContent="Morning must end after it starts.";
+    if(A.toMin(v.sessions.PM.start)>=A.toMin(v.sessions.PM.end))return err.textContent="Afternoon must end after it starts.";
+    if(A.toMin(v.sessions.AM.end)>A.toMin(v.sessions.PM.start))return err.textContent="Morning must end before the afternoon starts.";
+    if(v.bookingWindowDays<1)return err.textContent="Booking window must be at least 1 day.";
+    if([v.fees.general,v.fees.specialist,v.fees.followUp].some(x=>x<0||isNaN(x)))return err.textContent="Fees can't be negative.";
+    err.textContent="";db.set("slotConfig",Object.assign(A.cfg(),v));audit(me.username,"Updated slot configuration");toast("Slot configuration saved");slotConfig();
+  };
+}
+
+/* ---------- 4. Department schedule ---------- */
+function deptSchedule(){
+  const S=db.get("deptSchedule");
+  pane.innerHTML=`<div class="toolbar"><span class="muted" style="font-size:.85rem">Tick the days each department runs its OPD. Sunday is closed for all OPDs; Emergency stays open 24×7.</span><span style="flex:1"></span><button class="btn primary" id="dsSave">Save department schedule</button></div>
+    <div class="table-wrap"><table class="dt matrix"><thead><tr><th class="noclick">Department</th>${A.DAYS.slice(1).map(d=>`<th class="noclick">${d}</th>`).join("")}<th class="noclick">Doctors</th></tr></thead><tbody>
+    ${DEPTS().map(d=>{const s=S.find(x=>x.id===d.id)||{days:[1,1,1,1,1,1]};return `<tr><td><b>${esc(d.name)}</b> <span class="muted mono" style="font-size:.72rem">${esc(d.code)} · ${esc(d.block)}</span></td>${s.days.map((on,i)=>`<td><input type="checkbox" data-dept="${d.id}" data-day="${i}" ${on?"checked":""} aria-label="${esc(d.name)} ${A.DAYS[i+1]}"></td>`).join("")}<td>${A.doctors(d.id).length}</td></tr>`;}).join("")}
+    </tbody></table></div>`;
+  pane.querySelector("#dsSave").onclick=()=>{
+    const closedNow=()=>A.all().filter(a=>a.status==="Booked"&&a.date>=T&&!A.deptOpen(a.dept,a.date)).length;
+    const before=closedNow();
+    const L=db.get("deptSchedule");
+    pane.querySelectorAll("[data-dept]").forEach(c=>{let r=L.find(x=>x.id===c.dataset.dept);if(!r){r={id:c.dataset.dept,days:[1,1,1,1,1,1]};L.push(r);}r.days[+c.dataset.day]=c.checked?1:0;});
+    db.set("deptSchedule",L);audit(me.username,"Updated department OPD schedule");
+    const hit=closedNow()-before;
+    toast(hit>0?`Saved. ${hit} more booking(s) now fall on closed days — see the Dashboard.`:"Department schedule saved");
+  };
+}
+
+/* ---------- 5. Holiday / leave management ---------- */
+function holidayLeave(){
+  const until=addDays(T,60);
+  const hol=db.get("holidays").filter(h=>h.status==="Active"&&h.date>=T&&h.date<=until).sort((x,y)=>x.date.localeCompare(y.date));
+  const docIds=new Set(A.doctors().map(d=>d.id));
+  const leaves=db.get("leaves").filter(l=>docIds.has(l.staff)&&l.to>=T&&l.status!=="Rejected").sort((x,y)=>x.from.localeCompare(y.from));
+  const affected=(test)=>A.all().filter(a=>a.status==="Booked"&&a.date>=T&&test(a)).length;
+  pane.innerHTML=panelWrap(`<div class="grid-2">
+    ${card("Holidays · next 60 days",`<ul class="list">${hol.map(h=>{const n=affected(a=>a.date===h.date&&(h.scope==="Hospital"||(h.scope==="Department"&&a.dept===h.dept)));return `<li><span class="mono" style="width:5.5rem">${fmtDate(h.date)}</span><div class="grow"><b>${esc(h.name)}</b><div class="sub">${esc(h.scope)}${h.dept?" · "+esc(lookup.dept(h.dept)):""} · OPD ${esc(h.opd.toLowerCase())}</div></div>${n?`<span class="pill alert">${n} booked</span>`:""}</li>`;}).join("")||'<li class="empty">No holidays in the next 60 days.</li>'}</ul>`,`<a class="btn sm" href="holidays.html">Holiday calendar</a>`)}
+    ${card("Doctor leave and unavailability",`<ul class="list">${leaves.map(l=>{const n=affected(a=>a.doctor===l.staff&&a.date>=l.from&&a.date<=l.to);return `<li><div class="grow"><b>${esc(lookup.staff(l.staff))}</b><div class="sub">${fmtDate(l.from)}${l.to!==l.from?" – "+fmtDate(l.to):""} · ${esc(l.type)}</div></div>${n?`<span class="pill alert">${n} booked</span>`:""}${pill(l.status)}${l.status==="Pending"?`<button class="btn sm" data-lv="Approved" data-id="${l.id}">Approve</button><button class="btn sm link danger" data-lv="Rejected" data-id="${l.id}">Reject</button>`:""}</li>`;}).join("")||'<li class="empty">No upcoming doctor leave.</li>'}</ul>`,`<a class="btn sm" href="roster.html">All leave requests</a>`)}
+  </div>
+  ${card("Add doctor leave",`<div class="panel-body"><div class="form-grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="field"><label for="lDoc">Doctor</label><select id="lDoc">${opts(A.doctors().map(d=>({value:d.id,label:d.name})))}</select></div>
+    <div class="field"><label for="lType">Type</label><select id="lType">${opts(["Casual leave","Sick leave","Earned leave","Conference leave","Unavailable (doctor)"])}</select></div>
+    <div class="field"><label for="lFrom">From</label><input id="lFrom" type="date" min="${T}"></div>
+    <div class="field"><label for="lTo">To</label><input id="lTo" type="date" min="${T}"></div></div>
+    <div style="margin-top:.8rem"><button class="btn primary" id="lAdd">Add approved leave</button></div></div>`)}`);
+  pane.querySelectorAll("[data-lv]").forEach(b=>b.onclick=()=>{const L=db.get("leaves"),l=L.find(x=>x.id===b.dataset.id);l.status=b.dataset.lv;db.set("leaves",L);audit(me.username,`${l.status} leave ${l.id}`);toast(`${l.id} ${l.status.toLowerCase()}`);holidayLeave();});
+  pane.querySelector("#lAdd").onclick=()=>{
+    const $=id=>pane.querySelector("#"+id),from=$("lFrom").value,to=$("lTo").value||from;
+    if(!from){toast("Choose the first day of leave.");return;}if(to<from){toast("The end date is before the start date.");return;}
+    const L=db.get("leaves");L.unshift({id:uid("LV","leaves"),staff:$("lDoc").value,type:$("lType").value,from,to,days:daysBetween(from,to)+1,reason:"Added by appointment admin",status:"Approved"});
+    db.set("leaves",L);audit(me.username,`Added leave for ${lookup.staff($("lDoc").value)} ${from} to ${to}`);
+    const n=affected(a=>a.doctor===$("lDoc").value&&a.date>=from&&a.date<=to);
+    toast(n?`Leave added. ${n} booking(s) need rescheduling — see the Dashboard.`:"Leave added");holidayLeave();
+  };
+}
+
+/* ---------- 6. Walk-in management ---------- */
+function walkIns(){
+  const list=A.all().filter(a=>a.date===T&&a.source==="Walk-in").sort((x,y)=>(y.tokenNo||0)-(x.tokenNo||0));
+  pane.innerHTML=panelWrap(`<div class="grid-2">
+    ${card("Register a walk-in",`<div class="panel-body" style="display:grid;gap:.9rem">
+      <div class="field"><label for="wPat">Existing patient</label><select id="wPat"><option value="">Choose a patient, or register a new one below</option>${opts(lookup.patients())}</select></div>
+      <details id="wNewBox"><summary style="cursor:pointer;font-weight:600;font-size:.85rem">New patient</summary><div class="form-grid" style="margin-top:.6rem">
+        <div class="field"><label for="wName">Full name</label><input id="wName"></div><div class="field"><label for="wPhone">Mobile</label><input id="wPhone" inputmode="numeric"></div>
+        <div class="field"><label for="wGender">Gender</label><select id="wGender"><option>Male</option><option>Female</option><option>Other</option></select></div><div class="field"><label for="wDob">Date of birth</label><input id="wDob" type="date" max="${T}"></div></div></details>
+      <div class="form-grid"><div class="field"><label for="wDept">Department</label><select id="wDept">${opts(DEPTS().filter(d=>A.doctors(d.id).length).map(d=>({value:d.id,label:d.name})))}</select></div>
+      <div class="field"><label for="wDoc">Doctor</label><select id="wDoc"></select></div>
+      <div class="field full"><label for="wWhy">Reason</label><input id="wWhy" placeholder="e.g. fever since 2 days"></div></div>
+      <div><button class="btn primary" id="wGo">Register and issue token</button> <span class="err" id="wErr"></span></div>
+      <div id="wToken"></div></div>`)}
+    ${card(`Today's walk-ins (${list.length})`,`<ul class="list">${list.map(a=>`<li><span class="token sm">${esc(a.token||"—")}</span><div class="grow"><b>${esc(lookup.patient(a.patient))}</b><div class="sub">${esc(lookup.staff(a.doctor))} · ${esc(lookup.dept(a.dept))}</div></div>${pill(a.status)}</li>`).join("")||'<li class="empty">No walk-ins yet today.</li>'}</ul>`)}
+  </div>`);
+  const $=id=>pane.querySelector("#"+id);
+  const fillDocs=()=>{const docs=A.doctors($("wDept").value);
+    $("wDoc").innerHTML=`<option value="">Shortest queue (automatic)</option>`+docs.map(d=>{const ok=A.availability(d.id,T).ok,q=A.queue(d.id);return `<option value="${d.id}" ${ok?"":"disabled"}>${esc(d.name)} · ${ok?`${q.waiting.length} waiting`:"not in today"}</option>`;}).join("");};
+  $("wDept").onchange=fillDocs;fillDocs();
+  $("wGo").onclick=()=>{
+    const err=$("wErr");err.textContent="";let pid=$("wPat").value;
+    if(!pid){const name=$("wName").value.trim(),phone=$("wPhone").value.replace(/\D/g,""),dob=$("wDob").value;
+      if(!name||!/^[6-9]\d{9}$/.test(phone)||!dob){err.textContent="Choose a patient, or enter name, 10-digit mobile and date of birth.";$("wNewBox").open=true;return;}
+      const P=db.get("patients");const max=Math.max(...P.map(p=>+p.id.replace("UHID","")));pid="UHID"+(max+1);
+      P.unshift({id:pid,name,phone,gender:$("wGender").value,dob,blood:"",city:"",history:"",type:"OPD",status:"Active",registered:T,insurance:"None"});db.set("patients",P);}
+    const r=A.walkIn({patient:pid,dept:$("wDept").value,doctor:$("wDoc").value,reason:$("wWhy").value.trim()});
+    if(!r.ok){err.textContent=r.msg;return;}
+    audit(me.username,`Walk-in ${r.appt.id} token ${r.appt.token}`);walkIns();
+    pane.querySelector("#wToken").innerHTML=`<div class="qcard now"><div class="muted" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Token issued</div><div class="token">${esc(r.appt.token)}</div><div><b>${esc(lookup.patient(pid))}</b> → ${esc(lookup.staff(r.appt.doctor))}</div><div class="muted" style="font-size:.82rem">Fee ${inr(r.appt.fee)} · ${(A.position(r.appt.id)||{}).ahead||0} ahead in the queue</div></div>`;
+  };
+}
+
+/* ---------- 7. Cancellations and refunds ---------- */
+function cancellations(){
+  const R=db.get("refunds").slice().sort((x,y)=>(x.status==="Pending"?0:1)-(y.status==="Pending"?0:1)||y.requested.localeCompare(x.requested));
+  const cancelled=A.all().filter(a=>a.status==="Cancelled").sort((x,y)=>(y.cancelledAt||y.date).localeCompare(x.cancelledAt||x.date)).slice(0,40);
+  const upcoming=A.all().filter(a=>a.status==="Booked"&&a.date>=T).sort((x,y)=>(x.date+x.slot).localeCompare(y.date+y.slot));
+  pane.innerHTML=panelWrap(`
+    ${card("Refunds",`<div class="table-wrap"><table class="dt"><thead><tr><th class="noclick">Refund</th><th class="noclick">Patient</th><th class="noclick">Appointment</th><th class="noclick" style="text-align:right">Amount</th><th class="noclick">Reason</th><th class="noclick">Status</th><th class="noclick"></th></tr></thead><tbody>
+      ${R.map(r=>`<tr><td class="mono">${esc(r.id)}<div class="muted" style="font-size:.72rem">${esc(r.requested)}</div></td><td>${esc(lookup.patient(r.patient))}</td><td class="mono">${esc(r.appt)}</td><td class="num">${inr(r.amount)}</td><td class="muted">${esc(r.reason)}</td><td>${pill(r.status)}</td><td class="act">${r.status==="Pending"?`<button class="btn sm primary" data-rf="1" data-id="${r.id}">Process refund</button><button class="btn sm link danger" data-rf="0" data-id="${r.id}">Reject</button>`:`<span class="muted" style="font-size:.75rem">${esc(r.processed||"")}</span>`}</td></tr>`).join("")||'<tr><td colspan="7" class="empty">No refunds yet. Cancelling a paid appointment creates one.</td></tr>'}</tbody></table></div>`,`<span class="muted" style="font-size:.78rem">Demo refunds: no money moves.</span>`)}
+    <div class="grid-2">
+    ${card("Cancel or reschedule a booking",`<div class="toolbar"><input type="search" id="cxQ" placeholder="Search patient, UHID or appointment ID" aria-label="Search bookings"></div><ul class="list" id="cxList"></ul>`)}
+    ${card("Recent cancellations",`<ul class="list">${cancelled.map(a=>`<li><div class="grow"><b>${esc(lookup.patient(a.patient))}</b> · ${fmtDate(a.date)} ${esc(a.slot)}<div class="sub">${esc(lookup.staff(a.doctor))} · by ${esc((a.cancelledBy||"staff").toLowerCase())}${a.cancelReason?` · ${esc(a.cancelReason)}`:""}</div></div>${pill(a.pay||"Unpaid")}</li>`).join("")||'<li class="empty">No cancellations.</li>'}</ul>`)}
+    </div>`);
+  const drawList=()=>{const q=(pane.querySelector("#cxQ").value||"").toLowerCase();
+    const rows=upcoming.filter(a=>!q||`${a.id} ${a.patient} ${lookup.patient(a.patient)}`.toLowerCase().includes(q)).slice(0,25);
+    pane.querySelector("#cxList").innerHTML=rows.map(a=>`<li><div class="grow"><b>${esc(lookup.patient(a.patient))}</b> <span class="muted mono" style="font-size:.72rem">${esc(a.id)}</span><div class="sub">${fmtDate(a.date)} ${esc(a.slot)} · ${esc(lookup.staff(a.doctor))} · ${esc(a.pay||"Unpaid")}</div></div><div class="actions"><button class="btn sm" data-resched="${a.id}">Reschedule</button><button class="btn sm danger" data-cx="${a.id}">Cancel</button></div></li>`).join("")||'<li class="empty">No upcoming bookings match.</li>';
+    bindResched(pane.querySelector("#cxList"));
+    pane.querySelectorAll("[data-cx]").forEach(b=>b.onclick=()=>{const a=A.find(b.dataset.cx);
+      modal({title:`Cancel ${a.id} · ${lookup.patient(a.patient)}`,body:`<p>${fmtDate(a.date)} ${esc(a.slot)} with ${esc(lookup.staff(a.doctor))}.${a.pay==="Paid"?` A refund of <b>${inr(a.paidAmount??A.fee(a))}</b> will be created.`:""}</p><div class="field"><label for="cxWhy">Reason</label><input id="cxWhy" placeholder="e.g. Doctor on leave, patient request"></div>`,
+        buttons:[{label:"Cancel appointment",cls:"primary",onClick:d=>{const r=A.cancel(a.id,{reason:d.querySelector("#cxWhy").value.trim(),by:"Hospital"});if(!r.ok){toast(r.msg);return false;}toast(r.refund?`Cancelled · refund ${r.refund.id} created`:"Cancelled");cancellations();}}]});});
+  };
+  pane.querySelector("#cxQ").oninput=drawList;drawList();
+  pane.querySelectorAll("[data-rf]").forEach(b=>b.onclick=()=>{const r=A.settleRefund(b.dataset.id,b.dataset.rf==="1");if(!r.ok){toast(r.msg);return;}audit(me.username,`Refund ${r.refund.id} ${r.refund.status.toLowerCase()}`);toast(`Refund ${r.refund.id} ${r.refund.status.toLowerCase()}`);cancellations();});
+}
+
+/* ---------- 8. Queue management ---------- */
+function queueMgmt(){
+  const inDept=A.doctors().filter(d=>!qDept||d.dept===qDept);
+  const docs=inDept.filter(d=>A.all().some(a=>a.doctor===d.id&&a.date===T&&live(a)));
+  const idle=inDept.filter(d=>!docs.includes(d)&&A.availability(d.id,T).ok);
+  pane.innerHTML=`<div class="toolbar"><select id="qDept" style="width:auto" aria-label="Department"><option value="">All departments</option>${opts(DEPTS().map(d=>({value:d.id,label:d.name})),qDept)}</select>
+    <span class="muted" style="font-size:.8rem">Updates every 30 seconds · ${docs.length} doctor${docs.length===1?"":"s"} with patients today</span><span style="flex:1"></span><button class="btn sm" id="qRefresh">Refresh now</button></div>
+    <div class="panel-body grid-3">${docs.map(d=>{const q=A.queue(d.id);return `<div class="qcard ${q.serving?"now":""}" style="display:grid;gap:.6rem;align-content:start">
+      <div style="display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start"><div><b>${esc(d.name)}</b><div class="muted" style="font-size:.75rem">${esc(lookup.dept(d.dept))}</div></div><button class="btn sm primary" data-q="next" data-doc="${d.id}" ${q.serving||!q.waiting.length?"disabled":""}>Call next</button></div>
+      <div style="font-size:.85rem">${q.serving?`Now serving <span class="token sm">${esc(q.serving.token)}</span> ${esc(lookup.patient(q.serving.patient))}`:'<span class="muted">Nobody in consultation</span>'}</div>
+      <ul class="list" style="border:1px solid var(--line);border-radius:8px;background:var(--surface)">${q.waiting.map(a=>{const waited=a.checkInAt?Math.max(0,A.nowMin()-A.toMin(a.checkInAt)):0;return `<li><span class="token sm">${esc(a.token)}</span><div class="grow"><b style="font-size:.85rem">${esc(lookup.patient(a.patient))}</b><div class="sub">waiting ${waited} min</div></div><div class="actions"><button class="btn sm link" data-q="skip" data-id="${a.id}">Skip</button><button class="btn sm link" data-move="${a.id}">Move</button><button class="btn sm link danger" data-q="ns" data-id="${a.id}">No-show</button></div></li>`;}).join("")||'<li class="empty" style="padding:.8rem">Queue empty</li>'}</ul>
+      ${q.booked.length?`<details><summary style="cursor:pointer;font-size:.8rem;font-weight:600">${q.booked.length} booked, not yet arrived</summary><ul class="list">${q.booked.map(a=>`<li><span class="mono" style="font-size:.78rem">${esc(a.slot)}</span><div class="grow" style="font-size:.85rem">${esc(lookup.patient(a.patient))}</div><button class="btn sm" data-q="in" data-id="${a.id}">Check in</button></li>`).join("")}</ul></details>`:""}
+      <div class="muted" style="font-size:.75rem">${q.done.length} seen · ${q.noShow.length} no-show</div></div>`;}).join("")||'<div class="empty">No patients booked or waiting today.</div>'}</div>
+    ${idle.length?`<p class="muted" style="font-size:.8rem;padding:0 1rem 1rem;margin:0">Also consulting today with no patients yet: ${idle.map(d=>esc(d.name)).join(", ")}.</p>`:""}`;
+  pane.querySelector("#qDept").onchange=e=>{qDept=e.target.value;queueMgmt();};
+  pane.querySelector("#qRefresh").onclick=queueMgmt;
+  pane.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{
+    const t=b.dataset.q,r=t==="next"?A.callNext(b.dataset.doc):t==="skip"?A.skip(b.dataset.id):t==="ns"?A.noShow(b.dataset.id):A.checkIn(b.dataset.id,{force:true});
+    if(!r.ok){toast(r.msg);return;}toast(t==="next"?`${r.appt.token} called in`:t==="skip"?`${r.appt.token} moved to the end`:t==="ns"?`${r.appt.id} marked no-show`:`Checked in · token ${r.appt.token}`);queueMgmt();});
+  bindResched(pane);
+}
+setInterval(()=>{if(tabIndex===7&&!document.querySelector("dialog"))queueMgmt();},30000);
+
+/* ---------- 9. Appointment reports ---------- */
+let rFrom=addDays(T,-29),rTo=T;
+function reports(){
+  const L=A.all().filter(a=>a.date>=rFrom&&a.date<=rTo&&(!qDept||a.dept===qDept));
+  const R=db.get("refunds").filter(r=>r.status==="Processed"&&r.processed&&r.processed.slice(0,10)>=rFrom&&r.processed.slice(0,10)<=rTo);
+  const collected=L.filter(a=>["Paid","Refund pending","Refunded"].includes(a.pay)).reduce((s,a)=>s+(a.paidAmount??A.fee(a)),0);
+  const refunded=R.reduce((s,r)=>s+r.amount,0);
+  const waits=L.map(a=>minsBetween(a.checkInAt,a.startAt)).filter(x=>x!=null&&x>=0);
+  const pct=n=>L.length?Math.round(n/L.length*100)+"%":"—";
+  const row=list=>{const c=s=>list.filter(a=>a.status===s).length;return [list.length,c("Completed"),c("Cancelled"),c("No Show"),list.filter(a=>a.source==="Walk-in").length,list.filter(a=>a.source==="Online").length,list.filter(a=>["Paid","Refund pending","Refunded"].includes(a.pay)).reduce((s,a)=>s+(a.paidAmount??A.fee(a)),0)];};
+  const byDept=DEPTS().map(d=>[d.name,...row(L.filter(a=>a.dept===d.id))]).filter(r=>r[1]);
+  const byDoc=A.doctors().map(d=>[d.name,lookup.dept(d.dept),...row(L.filter(a=>a.doctor===d.id))]).filter(r=>r[2]).sort((x,y)=>y[2]-x[2]);
+  const head=["Appointments","Completed","Cancelled","No-show","Walk-in","Online","Collected (₹)"];
+  const tbl=(cols,rows)=>`<div class="table-wrap"><table class="dt"><thead><tr>${cols.map((c,i)=>`<th class="noclick" ${i>=cols.length-7?'style="text-align:right"':""}>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((v,i)=>`<td class="${typeof v==="number"?"num":""}">${typeof v==="number"?(i===r.length-1?inr(v):num(v)):esc(v)}</td>`).join("")}</tr>`).join("")||`<tr><td colspan="${cols.length}" class="empty">No appointments in this period.</td></tr>`}</tbody></table></div>`;
+  pane.innerHTML=`<div class="toolbar"><label for="rFrom" style="margin:0">From</label><input id="rFrom" type="date" value="${rFrom}" style="width:auto"><label for="rTo" style="margin:0">to</label><input id="rTo" type="date" value="${rTo}" style="width:auto">
+    <select id="rDept" style="width:auto" aria-label="Department"><option value="">All departments</option>${opts(DEPTS().map(d=>({value:d.id,label:d.name})),qDept)}</select><span style="flex:1"></span>
+    <button class="btn" id="rCsvDoc">Export by doctor (CSV)</button><button class="btn" id="rCsvAll">Export all appointments (CSV)</button></div>
+    ${panelWrap(`<div id="rk"></div><div class="grid-2">${card("Appointments per day",`<div id="rChart"></div>`)}${card("Booking source",`<div id="rSrc"></div>`)}</div>
+    ${card("By department",tbl(["Department",...head],byDept))}${card("By doctor",tbl(["Doctor","Department",...head],byDoc))}`)}`;
+  kpis("#rk",[{l:"Appointments",n:num(L.length)},{l:"Completed",n:pct(L.filter(a=>a.status==="Completed").length)},{l:"Cancelled",n:pct(L.filter(a=>a.status==="Cancelled").length)},
+    {l:"No-show rate",n:pct(L.filter(a=>a.status==="No Show").length)},{l:"Avg wait after check-in",n:waits.length?Math.round(waits.reduce((s,x)=>s+x,0)/waits.length)+" min":"—",d:`${waits.length} timed visits`},
+    {l:"Collected",n:inr(collected)},{l:"Refunded",n:inr(refunded),d:`${R.length} refunds`}]);
+  const span=Math.min(31,daysBetween(rFrom,rTo)+1),days=Array.from({length:span},(_,i)=>addDays(rTo,i-span+1));
+  barChart("#rChart",{data:days.map(d=>{const l=L.filter(a=>a.date===d);return {label:String(new Date(d+"T00:00").getDate()),values:[l.filter(a=>a.status==="Completed").length,l.filter(a=>!["Completed","Cancelled","No Show"].includes(a.status)).length,l.filter(a=>["Cancelled","No Show"].includes(a.status)).length]};}),
+    series:[{name:"Completed",color:"var(--scrub)"},{name:"Open",color:"var(--warn)"},{name:"Cancelled / no-show",color:"var(--alert)"}]});
+  hbars("#rSrc",["Online","Front desk","Walk-in","Doctor","Patient portal"].map(s=>({l:s,v:L.filter(a=>(a.source||"Front desk")===s).length})).filter(x=>x.v));
+  const $=id=>pane.querySelector("#"+id);
+  $("rFrom").onchange=e=>{rFrom=e.target.value||rFrom;reports();};$("rTo").onchange=e=>{rTo=e.target.value||rTo;reports();};$("rDept").onchange=e=>{qDept=e.target.value;reports();};
+  $("rCsvDoc").onclick=()=>csv("appointments-by-doctor",["Doctor","Department",...head],byDoc);
+  $("rCsvAll").onclick=()=>csv("appointments",["ID","Date","Slot","Patient","UHID","Doctor","Department","Type","Source","Status","Token","Fee","Payment","Checked in","Started","Finished"],
+    L.map(a=>[a.id,a.date,a.slot,lookup.patient(a.patient),a.patient,lookup.staff(a.doctor),lookup.dept(a.dept),a.type,a.source||"Front desk",a.status,a.token||"",A.fee(a),a.pay||"Unpaid",a.checkInAt||"",a.startAt||"",a.endAt||""]));
+}
+
+tabs("#tabs",["Dashboard","Doctor schedule","Slot configuration","Department schedule","Holidays & leave","Walk-ins","Cancellations & refunds","Queue","Reports"],i=>{tabIndex=i;rerender();});
+</script>
+</body>
+</html>
