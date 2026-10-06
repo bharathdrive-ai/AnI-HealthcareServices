@@ -208,7 +208,7 @@ const holidays=[
   [`${Y}-10-20`,"Deepavali","Hospital"],[`${Y}-11-01`,"Kannada Rajyotsava","Hospital"],[`${Y}-12-25`,"Christmas","Hospital"],
   [D(4),"Cath lab maintenance — no elective procedures","Department","DEP0003"],
   [D(12),"Eye OPD closed — screening camp","Department","DEP0009"],
-  [D(8),"College Foundation Day — no classes","Institutional"],
+  [D(8),"Institute Foundation Day — no classes","Institutional"],
   [D(19),"MBBS Phase I exam — teaching suspended","Institutional"],
 ].map(([date,name,scope,dept],i)=>({id:`HOL${String(i+1).padStart(4,"0")}`,date,name,scope,dept:dept||"",opd:scope==="Hospital"?"Emergency only":(scope==="Department"?"Closed":"Open"),status:"Active"}));
 
