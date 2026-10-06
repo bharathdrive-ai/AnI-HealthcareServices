@@ -146,6 +146,9 @@ const auth={
       Object.entries(sp.perms).forEach(([m,v])=>{if(!r.perms[m]){r.perms[m]={...v};changed=true;}});});
     if(changed){try{localStorage.setItem(PREFIX+"permissions",JSON.stringify(stored));}catch(e){}delete mem.permissions;}
   })();
+  /* Founding year corrected to 1985 (only if the saved profile still has the old placeholder). */
+  (function(){let h=null;try{h=JSON.parse(localStorage.getItem(PREFIX+"hospital"));}catch(e){}
+    if(h&&h.established==="1987"){h.established="1985";try{localStorage.setItem(PREFIX+"hospital",JSON.stringify(h));}catch(e){}delete mem.hospital;}})();
   /* Department renamed: Emergency Medicine → Emergency Care (only if the saved name is still the old one). */
   (function(){let L=null;try{L=JSON.parse(localStorage.getItem(PREFIX+"departments"));}catch(e){}
     const d=Array.isArray(L)&&L.find(x=>x.id==="DEP0010"&&x.name==="Emergency Medicine");

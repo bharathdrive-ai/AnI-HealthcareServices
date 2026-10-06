@@ -291,12 +291,12 @@ const audit=[
   [D(-1)+" 16:05","meera.iyer","Ordered 2D Echocardiography for UHID240179"],
 ].map(([time,user,action],i)=>({id:`AUD${i+1}`,time,user,action}));
 
-const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00451",nabh:"NABH-H-2021-0187",nmc:"NMC/MBBS/150/2019",address:"Hospital Road, Sector 12, Bengaluru 560 000",phone:"+91 80 4000 1000",email:"info@ani-healthcareservices.example",beds:1050,icuBeds:96,ots:14,established:"1987",gstin:"29AAATJ0000A1Z0"};
+const hospital={id:"HOSP",name:"AnI-HealthcareServices",regNo:"KA/BLR/CE/2026/00451",nabh:"NABH-H-2021-0187",nmc:"NMC/MBBS/150/2019",address:"Hospital Road, Sector 12, Bengaluru 560 000",phone:"+91 80 4000 1000",email:"info@ani-healthcareservices.example",beds:1050,icuBeds:96,ots:14,established:"1985",gstin:"29AAATJ0000A1Z0"};
 
 /* Bump when accounts or passwords change: browsers drop their saved user list and sessions. */
 window.ACCOUNTS_VERSION="2026-10-06";
 /* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
-window.DATA_VERSION="2026-10-06-dept-heads";
+window.DATA_VERSION="2026-10-06-est-1985";
 /* ---------- Appointment management ---------- */
 const slotConfig={id:"CFG",slotMinutes:15,
   sessions:{AM:{start:"09:00",end:"13:00"},PM:{start:"14:00",end:"16:00"}},
