@@ -5,6 +5,56 @@ const T=iso(new Date());
 const D=n=>{const d=new Date(T+"T00:00");d.setDate(d.getDate()+n);return iso(d);};
 const Y=new Date().getFullYear();
 
+/* >>> DOCTORS CONFIG — generated from config/doctors-config.xlsx by tools/doctors_config.py. Edit the workbook, not this block. */
+const DOCTORS_CONFIG={
+"version":"75187a6819ca",
+"doctors":[
+{"id":"STF0001","name":"Dr. Meera Iyer","dept":"DEP0003","qual":"MD, DM (Cardiology)","designation":"Professor & Head","type":"Permanent","exp":22,"joined":"2004-07-01","phone":"9845010000","email":"meera.iyer@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Off","Full","Off","Full","AM"]},
+{"id":"STF0002","name":"Dr. Arjun Rao","dept":"DEP0004","qual":"MS (Ortho), Fellowship Arthroplasty","designation":"Professor & Head","type":"Permanent","exp":18,"joined":"2008-06-15","phone":"9845010137","email":"arjun.rao@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Off","Full","Full","Full"]},
+{"id":"STF0003","name":"Dr. Fatima Sheikh","dept":"DEP0006","qual":"MD (Paediatrics)","designation":"Professor & Head","type":"Permanent","exp":12,"joined":"2014-01-10","phone":"9845010274","email":"fatima.sheikh@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0004","name":"Dr. Rohan Kulkarni","dept":"DEP0001","qual":"MD (General Medicine)","designation":"Professor & Head","type":"Permanent","exp":25,"joined":"2001-03-01","phone":"9845010411","email":"rohan.kulkarni@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0005","name":"Dr. Anjali Nair","dept":"DEP0005","qual":"MS, DNB (OBG)","designation":"Professor & Head","type":"Permanent","exp":14,"joined":"2012-08-20","phone":"9845010548","email":"anjali.nair@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0006","name":"Dr. Vikram Singh","dept":"DEP0007","qual":"MCh (Neurosurgery)","designation":"Professor & Head","type":"Permanent","exp":9,"joined":"2017-11-01","phone":"9845010685","email":"vikram.singh@ani-healthcareservices.example","status":"Active","web":true,"week":["Off","Full","Off","Full","Off","Full"]},
+{"id":"STF0007","name":"Dr. Kavya Menon","dept":"DEP0009","qual":"MS (Ophthalmology)","designation":"Professor & Head","type":"Permanent","exp":11,"joined":"2015-05-04","phone":"9845010822","email":"kavya.menon@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0008","name":"Dr. Sameer Joshi","dept":"DEP0002","qual":"MS (General Surgery), FMAS","designation":"Professor & Head","type":"Permanent","exp":20,"joined":"2006-02-14","phone":"9845010959","email":"sameer.joshi@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0009","name":"Dr. Priya Das","dept":"DEP0008","qual":"MS (ENT)","designation":"Professor & Head","type":"Contract","exp":7,"joined":"2019-09-09","phone":"9845011096","email":"priya.das@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Off","Full","Off","Full","Off"]},
+{"id":"STF0021","name":"Dr. Sanjay Hegde","dept":"DEP0001","qual":"MD (General Medicine)","designation":"Associate Professor","type":"Permanent","exp":15,"joined":"2011-07-01","phone":"9845012740","email":"sanjay.hegde@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0022","name":"Dr. Nandini Shetty","dept":"DEP0001","qual":"MD (General Medicine)","designation":"Assistant Professor","type":"Permanent","exp":8,"joined":"2018-08-16","phone":"9845012877","email":"nandini.shetty@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0023","name":"Dr. Karthik Shenoy","dept":"DEP0002","qual":"MS (General Surgery)","designation":"Associate Professor","type":"Permanent","exp":13,"joined":"2013-02-04","phone":"9845013014","email":"karthik.shenoy@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0024","name":"Dr. Ayesha Khan","dept":"DEP0002","qual":"MS (General Surgery), FMAS","designation":"Assistant Professor","type":"Permanent","exp":7,"joined":"2019-06-10","phone":"9845013151","email":"ayesha.khan@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0025","name":"Dr. Rajesh Menon","dept":"DEP0003","qual":"MD, DM (Cardiology)","designation":"Associate Professor","type":"Permanent","exp":14,"joined":"2012-09-01","phone":"9845013288","email":"rajesh.menon@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Off","Full","Off","Full","Full"]},
+{"id":"STF0026","name":"Dr. Shruti Patil","dept":"DEP0003","qual":"MD, DM (Cardiology)","designation":"Assistant Professor","type":"Permanent","exp":6,"joined":"2020-03-02","phone":"9845013425","email":"shruti.patil@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Off","Full","Off","Full","AM"]},
+{"id":"STF0027","name":"Dr. Prakash Gowda","dept":"DEP0004","qual":"MS (Ortho)","designation":"Associate Professor","type":"Permanent","exp":16,"joined":"2010-11-15","phone":"9845013562","email":"prakash.gowda@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Off","Full","Full","Full"]},
+{"id":"STF0028","name":"Dr. Divya Krishnan","dept":"DEP0004","qual":"MS (Ortho), Fellowship Sports Medicine","designation":"Assistant Professor","type":"Contract","exp":7,"joined":"2019-01-21","phone":"9845013699","email":"divya.krishnan@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Off","Full","Full","Full"]},
+{"id":"STF0029","name":"Dr. Usha Narayan","dept":"DEP0005","qual":"MS (OBG)","designation":"Professor","type":"Permanent","exp":21,"joined":"2005-06-13","phone":"9845013836","email":"usha.narayan@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0030","name":"Dr. Sneha Reddy","dept":"DEP0005","qual":"MS (OBG)","designation":"Assistant Professor","type":"Permanent","exp":6,"joined":"2020-07-06","phone":"9845013973","email":"sneha.reddy@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0031","name":"Dr. Arvind Kumar","dept":"DEP0006","qual":"MD (Paediatrics), DM (Neonatology)","designation":"Associate Professor","type":"Permanent","exp":13,"joined":"2013-04-08","phone":"9845014110","email":"arvind.kumar@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0032","name":"Dr. Meghana Bhat","dept":"DEP0006","qual":"MD (Paediatrics)","designation":"Assistant Professor","type":"Permanent","exp":5,"joined":"2021-02-15","phone":"9845014247","email":"meghana.bhat@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0033","name":"Dr. Harini Subramanian","dept":"DEP0007","qual":"MD, DM (Neurology)","designation":"Associate Professor","type":"Permanent","exp":12,"joined":"2014-10-01","phone":"9845014384","email":"harini.subramanian@ani-healthcareservices.example","status":"Active","web":true,"week":["Off","Full","Off","Full","Off","Full"]},
+{"id":"STF0034","name":"Dr. Rahul Deshpande","dept":"DEP0007","qual":"MD, DM (Neurology)","designation":"Assistant Professor","type":"Permanent","exp":6,"joined":"2020-09-14","phone":"9845014521","email":"rahul.deshpande@ani-healthcareservices.example","status":"Active","web":true,"week":["Off","Full","Off","Full","Off","Full"]},
+{"id":"STF0035","name":"Dr. Manjunath Kamath","dept":"DEP0008","qual":"MS (ENT)","designation":"Associate Professor","type":"Permanent","exp":15,"joined":"2011-12-05","phone":"9845014658","email":"manjunath.kamath@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Off","Full","Off","Full","Off"]},
+{"id":"STF0036","name":"Dr. Farah Siddiqui","dept":"DEP0008","qual":"MS (ENT)","designation":"Assistant Professor","type":"Contract","exp":5,"joined":"2021-08-02","phone":"9845014795","email":"farah.siddiqui@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Off","Full","Off","Full","Off"]},
+{"id":"STF0037","name":"Dr. Suresh Iyengar","dept":"DEP0009","qual":"MS (Ophthalmology)","designation":"Professor","type":"Permanent","exp":23,"joined":"2003-01-06","phone":"9845014932","email":"suresh.iyengar@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0038","name":"Dr. Pooja Nair","dept":"DEP0009","qual":"MS (Ophthalmology), FICO","designation":"Assistant Professor","type":"Permanent","exp":6,"joined":"2020-05-18","phone":"9845015069","email":"pooja.nair@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0010","name":"Dr. Naveen Reddy","dept":"DEP0010","qual":"MD (Emergency Medicine)","designation":"Professor & Head","type":"Permanent","exp":10,"joined":"2016-04-01","phone":"9845011233","email":"naveen.reddy@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0039","name":"Dr. Abhishek Verma","dept":"DEP0010","qual":"MD (Emergency Medicine)","designation":"Assistant Professor","type":"Permanent","exp":7,"joined":"2019-03-11","phone":"9845015206","email":"abhishek.verma@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0040","name":"Dr. Rekha Joseph","dept":"DEP0010","qual":"MD (Emergency Medicine)","designation":"Senior Resident","type":"Contract","exp":4,"joined":"2022-07-04","phone":"9845015343","email":"rekha.joseph@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0045","name":"Dr. Sunita Rao","dept":"DEP0011","qual":"MD (Pathology)","designation":"Professor & Head","type":"Permanent","exp":19,"joined":"2007-08-01","phone":"9845016028","email":"sunita.rao@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0041","name":"Dr. Ganesh Murthy","dept":"DEP0011","qual":"MD (Pathology)","designation":"Associate Professor","type":"Permanent","exp":14,"joined":"2012-06-25","phone":"9845015480","email":"ganesh.murthy@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]},
+{"id":"STF0042","name":"Dr. Anitha Thomas","dept":"DEP0011","qual":"MD (Pathology)","designation":"Assistant Professor","type":"Permanent","exp":6,"joined":"2020-10-12","phone":"9845015617","email":"anitha.thomas@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0046","name":"Dr. Imran Khan","dept":"DEP0012","qual":"MD (Radio-diagnosis)","designation":"Professor & Head","type":"Permanent","exp":18,"joined":"2008-03-17","phone":"9845016165","email":"imran.khan@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0043","name":"Dr. Vivek Sharma","dept":"DEP0012","qual":"MD (Radio-diagnosis)","designation":"Associate Professor","type":"Permanent","exp":12,"joined":"2014-02-17","phone":"9845015754","email":"vivek.sharma@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","Full"]},
+{"id":"STF0044","name":"Dr. Nisha Agarwal","dept":"DEP0012","qual":"DNB (Radiology)","designation":"Assistant Professor","type":"Permanent","exp":5,"joined":"2021-04-05","phone":"9845015891","email":"nisha.agarwal@ani-healthcareservices.example","status":"Active","web":true,"week":["Full","Full","Full","Full","Full","AM"]}
+],
+"opdDays":{"DEP0001":[1,1,1,1,1,1],"DEP0002":[1,1,1,1,1,1],"DEP0003":[1,0,1,0,1,1],"DEP0004":[1,1,0,1,1,1],"DEP0005":[1,1,1,1,1,1],"DEP0006":[1,1,1,1,1,1],"DEP0007":[0,1,0,1,0,1],"DEP0008":[1,0,1,0,1,0],"DEP0009":[1,1,1,1,1,1],"DEP0010":[1,1,1,1,1,1],"DEP0011":[1,1,1,1,1,1],"DEP0012":[1,1,1,1,1,1]},
+"generalDepts":["DEP0001","DEP0010"],
+"settings":{"slotMinutes":15,"AM":{"start":"09:00","end":"13:00"},"PM":{"start":"14:00","end":"16:00"},"maxPerSlot":1,"bookingWindowDays":30,"fees":{"general":300,"specialist":600,"followUp":0},"followUpFreeDays":14},
+"leaves":[
+]
+};
+/* <<< DOCTORS CONFIG */
+const CFG_HEAD={};DOCTORS_CONFIG.doctors.forEach(d=>{if(d.designation==="Professor & Head"&&d.status!=="Inactive"&&!CFG_HEAD[d.dept])CFG_HEAD[d.dept]=d.name;});
+
 const departments=[
   ["DEP0001","General Medicine","MED","A1",8,"Dr. Rohan Kulkarni"],
   ["DEP0002","General Surgery","SUR","A2",6,"Dr. Sameer Joshi"],
@@ -18,7 +68,7 @@ const departments=[
   ["DEP0010","Emergency Care","EMR","G1",7,"Dr. Naveen Reddy"],
   ["DEP0011","Pathology & Laboratory","LAB","D1",4,"Dr. Sunita Rao"],
   ["DEP0012","Radiology","RAD","D2",4,"Dr. Imran Khan"],
-].map(([id,name,code,block,floor,head])=>({id,name,code,block,floor,head,status:"Active"}));
+].map(([id,name,code,block,floor,head])=>({id,name,code,block,floor,head:CFG_HEAD[id]||head,status:"Active"}));
 
 const wards=[
   ["WRD0001","Male Medical Ward","General","DEP0001","A1",40],
@@ -45,16 +95,6 @@ const beds=[];
 wards.forEach(w=>{const n=Math.min(w.beds,24);for(let i=1;i<=n;i++){beds.push({id:`${w.id}-B${String(i).padStart(2,"0")}`,ward:w.id,no:`${w.block}-${String(i).padStart(2,"0")}`,status:bedStates[(i*7+w.beds)%bedStates.length]});}});
 
 const staff=[
-  ["STF0001","Dr. Meera Iyer","Doctor","DEP0003","MD, DM (Cardiology)","Professor & Head","Permanent",22,"2004-07-01"],
-  ["STF0002","Dr. Arjun Rao","Doctor","DEP0004","MS (Ortho)","Professor & Head","Permanent",18,"2008-06-15"],
-  ["STF0003","Dr. Fatima Sheikh","Doctor","DEP0006","MD (Paediatrics)","Professor & Head","Permanent",12,"2014-01-10"],
-  ["STF0004","Dr. Rohan Kulkarni","Doctor","DEP0001","MD (General Medicine)","Professor & Head","Permanent",25,"2001-03-01"],
-  ["STF0005","Dr. Anjali Nair","Doctor","DEP0005","MS, DNB (OBG)","Professor & Head","Permanent",14,"2012-08-20"],
-  ["STF0006","Dr. Vikram Singh","Doctor","DEP0007","MCh (Neurosurgery)","Professor & Head","Permanent",9,"2017-11-01"],
-  ["STF0007","Dr. Kavya Menon","Doctor","DEP0009","MS (Ophthalmology)","Professor & Head","Permanent",11,"2015-05-04"],
-  ["STF0008","Dr. Sameer Joshi","Doctor","DEP0002","MS (General Surgery), FMAS","Professor & Head","Permanent",20,"2006-02-14"],
-  ["STF0009","Dr. Priya Das","Doctor","DEP0008","MS (ENT)","Professor & Head","Contract",7,"2019-09-09"],
-  ["STF0010","Dr. Naveen Reddy","Doctor","DEP0010","MD (Emergency Medicine)","Professor & Head","Permanent",10,"2016-04-01"],
   ["STF0011","Sr. Lakshmi Pillai","Nurse","DEP0001","B.Sc Nursing","Nursing Superintendent","Permanent",24,"2002-01-07"],
   ["STF0012","Sr. Deepa Thomas","Nurse","DEP0003","M.Sc Nursing","Ward Sister","Permanent",15,"2011-06-01"],
   ["STF0013","Rahul Verma","Nurse","DEP0010","GNM","Staff Nurse","Permanent",6,"2020-02-17"],
@@ -65,33 +105,10 @@ const staff=[
   ["STF0018","Ravi Kumar","Pharmacist","DEP0001","B.Pharm","Chief Pharmacist","Permanent",16,"2010-09-01"],
   ["STF0019","Neha Jain","Admin","DEP0001","MBA (Hospital Admin)","Front Office Manager","Permanent",7,"2019-04-22"],
   ["STF0020","Suresh Babu","Support","DEP0002","—","OT Assistant","Contract",4,"2022-08-08"],
-  ["STF0021","Dr. Sanjay Hegde","Doctor","DEP0001","MD (General Medicine)","Associate Professor","Permanent",15,"2011-07-01"],
-  ["STF0022","Dr. Nandini Shetty","Doctor","DEP0001","MD (General Medicine)","Assistant Professor","Permanent",8,"2018-08-16"],
-  ["STF0023","Dr. Karthik Shenoy","Doctor","DEP0002","MS (General Surgery)","Associate Professor","Permanent",13,"2013-02-04"],
-  ["STF0024","Dr. Ayesha Khan","Doctor","DEP0002","MS (General Surgery), FMAS","Assistant Professor","Permanent",7,"2019-06-10"],
-  ["STF0025","Dr. Rajesh Menon","Doctor","DEP0003","MD, DM (Cardiology)","Associate Professor","Permanent",14,"2012-09-01"],
-  ["STF0026","Dr. Shruti Patil","Doctor","DEP0003","MD, DM (Cardiology)","Assistant Professor","Permanent",6,"2020-03-02"],
-  ["STF0027","Dr. Prakash Gowda","Doctor","DEP0004","MS (Ortho)","Associate Professor","Permanent",16,"2010-11-15"],
-  ["STF0028","Dr. Divya Krishnan","Doctor","DEP0004","MS (Ortho), Fellowship Sports Medicine","Assistant Professor","Contract",7,"2019-01-21"],
-  ["STF0029","Dr. Usha Narayan","Doctor","DEP0005","MS (OBG)","Professor","Permanent",21,"2005-06-13"],
-  ["STF0030","Dr. Sneha Reddy","Doctor","DEP0005","MS (OBG)","Assistant Professor","Permanent",6,"2020-07-06"],
-  ["STF0031","Dr. Arvind Kumar","Doctor","DEP0006","MD (Paediatrics), DM (Neonatology)","Associate Professor","Permanent",13,"2013-04-08"],
-  ["STF0032","Dr. Meghana Bhat","Doctor","DEP0006","MD (Paediatrics)","Assistant Professor","Permanent",5,"2021-02-15"],
-  ["STF0033","Dr. Harini Subramanian","Doctor","DEP0007","MD, DM (Neurology)","Associate Professor","Permanent",12,"2014-10-01"],
-  ["STF0034","Dr. Rahul Deshpande","Doctor","DEP0007","MD, DM (Neurology)","Assistant Professor","Permanent",6,"2020-09-14"],
-  ["STF0035","Dr. Manjunath Kamath","Doctor","DEP0008","MS (ENT)","Associate Professor","Permanent",15,"2011-12-05"],
-  ["STF0036","Dr. Farah Siddiqui","Doctor","DEP0008","MS (ENT)","Assistant Professor","Contract",5,"2021-08-02"],
-  ["STF0037","Dr. Suresh Iyengar","Doctor","DEP0009","MS (Ophthalmology)","Professor","Permanent",23,"2003-01-06"],
-  ["STF0038","Dr. Pooja Nair","Doctor","DEP0009","MS (Ophthalmology), FICO","Assistant Professor","Permanent",6,"2020-05-18"],
-  ["STF0039","Dr. Abhishek Verma","Doctor","DEP0010","MD (Emergency Medicine)","Assistant Professor","Permanent",7,"2019-03-11"],
-  ["STF0040","Dr. Rekha Joseph","Doctor","DEP0010","MD (Emergency Medicine)","Senior Resident","Contract",4,"2022-07-04"],
-  ["STF0041","Dr. Ganesh Murthy","Doctor","DEP0011","MD (Pathology)","Associate Professor","Permanent",14,"2012-06-25"],
-  ["STF0042","Dr. Anitha Thomas","Doctor","DEP0011","MD (Pathology)","Assistant Professor","Permanent",6,"2020-10-12"],
-  ["STF0043","Dr. Vivek Sharma","Doctor","DEP0012","MD (Radio-diagnosis)","Associate Professor","Permanent",12,"2014-02-17"],
-  ["STF0044","Dr. Nisha Agarwal","Doctor","DEP0012","DNB (Radiology)","Assistant Professor","Permanent",5,"2021-04-05"],
-  ["STF0045","Dr. Sunita Rao","Doctor","DEP0011","MD (Pathology)","Professor & Head","Permanent",19,"2007-08-01"],
-  ["STF0046","Dr. Imran Khan","Doctor","DEP0012","MD (Radio-diagnosis)","Professor & Head","Permanent",18,"2008-03-17"],
-].map(([id,name,role,dept,qual,designation,type,exp,joined],i)=>({id,name,role,dept,qual,designation,type,exp,joined,phone:`98450${String(10000+i*137).slice(-5)}`,email:name.toLowerCase().replace(/^(dr|sr)\.\s*/,"").replace(/\s+/g,".")+"@ani-healthcareservices.example",status:i===19?"On Leave":"Active"}));
+].map(([id,name,role,dept,qual,designation,type,exp,joined])=>{const i=+id.slice(3)-1;return {id,name,role,dept,qual,designation,type,exp,joined,phone:`98450${String(10000+i*137).slice(-5)}`,email:name.toLowerCase().replace(/^(dr|sr)\.\s*/,"").replace(/\s+/g,".")+"@ani-healthcareservices.example",status:i===19?"On Leave":"Active"};})
+  /* Doctors come from the DOCTORS CONFIG block above (config/doctors-config.xlsx). */
+  .concat(DOCTORS_CONFIG.doctors.map(d=>({id:d.id,name:d.name,role:"Doctor",dept:d.dept,qual:d.qual,designation:d.designation,type:d.type,exp:d.exp,joined:d.joined,phone:d.phone,email:d.email,status:d.status})))
+  .sort((a,b)=>a.id.localeCompare(b.id));
 
 const firstNames=["Ramesh","Sita","Abdul","Priyanka","Joseph","Kavitha","Anil","Fathima","Ganesh","Lalitha","Mohan","Nirmala","Prakash","Rekha","Santosh","Usha","Vinod","Yamini","Harish","Bhavana"];
 const lastNames=["Gowda","Sharma","Rahman","Patel","D'Souza","Reddy","Kumar","Begum","Hegde","Iyer","Naik","Rao","Shetty","Pillai","Desai","Menon","Joshi","Nair","Bhat","Varma"];
@@ -108,7 +125,7 @@ const patients=firstNames.map((f,i)=>({
 
 const times=["09:00","09:15","09:30","09:45","10:00","10:15","10:30","10:45","11:00","11:30","12:00","12:15"];
 const apStatus=["Booked","Checked In","In Consultation","Completed","Completed","Cancelled","No Show","Booked"];
-const docs=staff.filter(s=>s.role==="Doctor");
+const docs=staff.filter(s=>s.role==="Doctor"&&s.status==="Active");
 const appointments=[];
 for(let i=0;i<34;i++){
   const day=i<14?0:(i<22?-(1+i%5):1+i%6);
@@ -202,7 +219,7 @@ const leaves=[
   {id:"LV0003",staff:"STF0006",type:"Conference leave",from:D(9),to:D(11),days:3,reason:"Neuro conference, Delhi",status:"Pending"},
   {id:"LV0004",staff:"STF0014",type:"Earned leave",from:D(-20),to:D(-16),days:5,reason:"Travel",status:"Approved"},
   {id:"LV0005",staff:"STF0009",type:"Casual leave",from:D(6),to:D(6),days:1,reason:"Personal",status:"Rejected"},
-];
+].concat(DOCTORS_CONFIG.leaves.map(l=>({...l})));
 
 const holidays=[
   [`${Y}-01-26`,"Republic Day","Hospital"],[`${Y}-03-14`,"Holi","Hospital"],[`${Y}-04-14`,"Ambedkar Jayanti","Hospital"],
@@ -298,15 +315,16 @@ window.ACCOUNTS_VERSION="2026-10-06";
 /* Bump when seed records are added: browsers merge in new staff/roster entries without losing their own changes. */
 window.DATA_VERSION="2026-10-06-heads";
 /* ---------- Appointment management ---------- */
-const slotConfig={id:"CFG",slotMinutes:15,
-  sessions:{AM:{start:"09:00",end:"13:00"},PM:{start:"14:00",end:"16:00"}},
-  maxPerSlot:1,bookingWindowDays:30,cancelCutoffHours:2,checkInBeforeMins:60,
-  fees:{general:300,specialist:600,followUp:0},followUpFreeDays:14,generalDepts:["DEP0001","DEP0010"]};
+/* Slot settings, OPD days and weekly patterns come from the DOCTORS CONFIG block (config/doctors-config.xlsx). */
+const CS=DOCTORS_CONFIG.settings;
+const slotConfig={id:"CFG",slotMinutes:CS.slotMinutes,
+  sessions:{AM:{...CS.AM},PM:{...CS.PM}},
+  maxPerSlot:CS.maxPerSlot,bookingWindowDays:CS.bookingWindowDays,cancelCutoffHours:2,checkInBeforeMins:60,
+  fees:{...CS.fees},followUpFreeDays:CS.followUpFreeDays,generalDepts:[...DOCTORS_CONFIG.generalDepts]};
 /* OPD days Mon..Sat per department (1 = OPD runs). Sunday is always closed. */
-const OPD_DAYS={DEP0003:[1,0,1,0,1,1],DEP0004:[1,1,0,1,1,1],DEP0007:[0,1,0,1,0,1],DEP0008:[1,0,1,0,1,0]};
-const deptSchedule=departments.map(d=>({id:d.id,days:OPD_DAYS[d.id]||[1,1,1,1,1,1]}));
+const deptSchedule=departments.map(d=>({id:d.id,days:[...(DOCTORS_CONFIG.opdDays[d.id]||[1,1,1,1,1,1])]}));
 /* Each doctor's weekly pattern Mon..Sat: Full, AM, PM or Off */
-const doctorAvail=staff.filter(s=>s.role==="Doctor").map((s,i)=>({id:s.id,week:["Full","Full","Full","Full","Full",i%3===0?"AM":"Full"]}));
+const doctorAvail=DOCTORS_CONFIG.doctors.map(d=>({id:d.id,week:[...d.week]})).sort((a,b)=>a.id.localeCompare(b.id));
 const payments=[];
 const refunds=[];
 /* Keep sample appointments on days their OPD actually runs (no Sundays, closed OPD days or holidays). */
@@ -318,5 +336,5 @@ const refunds=[];
   appointments.forEach(a=>{const dir=a.date<T?-1:1;let g=0;while(closed(a.dept,a.date)&&g++<14)a.date=shift(a.date,dir);});
 })();
 
-window.SEED={slotConfig,deptSchedule,doctorAvail,payments,refunds,hospital,departments,wards,rooms,roomTypes,beds,staff,patients,appointments,services,orders,suppliers,medicines,batches,prescriptions,dispenses,returns,roster,shifts,leaves,holidays,templates,rules,notifLog,roles,permissions,users,settings,audit,MODULES};
+window.SEED={doctorsConfig:DOCTORS_CONFIG,slotConfig,deptSchedule,doctorAvail,payments,refunds,hospital,departments,wards,rooms,roomTypes,beds,staff,patients,appointments,services,orders,suppliers,medicines,batches,prescriptions,dispenses,returns,roster,shifts,leaves,holidays,templates,rules,notifLog,roles,permissions,users,settings,audit,MODULES};
 })();

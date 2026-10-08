@@ -166,6 +166,35 @@ const auth={
   try{localStorage.setItem(PREFIX+"dataVersion",v);}catch(e){}
 })();
 
+/* Doctors list & availability from config/doctors-config.xlsx (tools/doctors_config.py sync). When a new
+   configuration ships, apply it over this browser's saved copies: the workbook is the master for these fields. */
+(function(){
+  const S=window.SEED||{},C=S.doctorsConfig;if(!C||!C.version)return;
+  let saved=null;try{saved=localStorage.getItem(PREFIX+"doctorsConfig");}catch(e){}
+  if(saved===C.version)return;
+  const load=k=>{try{return JSON.parse(localStorage.getItem(PREFIX+k));}catch(e){return null;}};
+  const save=(k,v)=>{try{localStorage.setItem(PREFIX+k,JSON.stringify(v));}catch(e){}delete mem[k];};
+  const ids=new Set(C.doctors.map(d=>d.id));
+  /* Replace (or add) the matching records; anything not saved yet already comes from the seed. */
+  const upsert=(k,want,keepExtra)=>{const L=load(k);if(!Array.isArray(L))return;
+    const fresh=(S[k]||[]).filter(want);
+    fresh.forEach(r=>{const cur=L.find(x=>x.id===r.id);if(cur)Object.assign(cur,structuredClone(r));else L.push(structuredClone(r));});
+    save(k,keepExtra?L:L.filter(x=>!want(x)||fresh.some(r=>r.id===x.id)));};
+  upsert("staff",r=>ids.has(r.id),true);
+  upsert("doctorAvail",r=>ids.has(r.id),true);
+  upsert("deptSchedule",()=>true,true);
+  upsert("leaves",r=>String(r.id).startsWith("LVC-"),false); // workbook leave rows removed from the sheet are removed here too
+  /* Duty roster rows for newly added doctors (existing rosters are left alone). */
+  (function(){const L=load("roster");if(!Array.isArray(L))return;const have=new Set(L.map(r=>r.id));
+    const add=(S.roster||[]).filter(r=>ids.has(r.id)&&!have.has(r.id));if(add.length){L.push(...structuredClone(add));save("roster",L);}})();
+  (function(){const L=load("departments");if(!Array.isArray(L))return;
+    (S.departments||[]).forEach(d=>{const cur=L.find(x=>x.id===d.id);if(cur)cur.head=d.head;});save("departments",L);})();
+  (function(){const c=load("slotConfig");if(!c||typeof c!=="object"||!S.slotConfig)return;
+    const s=S.slotConfig;["slotMinutes","maxPerSlot","bookingWindowDays","followUpFreeDays"].forEach(k=>c[k]=s[k]);
+    c.sessions=structuredClone(s.sessions);c.fees=structuredClone(s.fees);c.generalDepts=[...s.generalDepts];save("slotConfig",c);})();
+  try{localStorage.setItem(PREFIX+"doctorsConfig",C.version);}catch(e){}
+})();
+
 /* Gate every portal page except the login page. */
 const FILE=location.pathname.split("/").pop()||"index.html";
 const PAGE=PAGES.find(p=>p.file===FILE)||null;

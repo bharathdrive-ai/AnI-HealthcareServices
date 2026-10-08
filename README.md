@@ -53,6 +53,27 @@ Three areas share one appointment engine (`portal/assets/appt.js`), so a booking
 
 Rules live in the slot configuration: session times, slot length, patients per slot, booking window, change cut-off, check-in window and fees (general, specialist, follow-up). Payments and refunds are simulated: no card details are collected and no money moves.
 
+### Doctors & availability configuration (Excel)
+
+`config/doctors-config.xlsx` is the master list of doctors and their schedules:
+
+| Sheet | You maintain |
+|---|---|
+| Doctors | One row per doctor: ID, name, department, qualification, designation, employment, experience, joining date, mobile, email, status, show on website, weekly availability Mon–Sat (Full / AM / PM / Off). Row order is the website order. |
+| Departments | OPD days per department (Open / Closed) and General or Specialist fee. Shows the head and active doctor count. |
+| Leave | Dates a doctor is away. Approved leave blocks their booking slots. |
+| Settings | Session times, slot length, patients per slot, booking window, fees, free follow-up period. |
+| Weekly Coverage | Read-only: active doctors per department per session. A red 0 means the OPD is open with nobody available. |
+
+Cream cells are editable (most have dropdowns), grey cells are formulas and green cells are fixed reference values. After editing, save the workbook, then:
+
+```bash
+python tools/doctors_config.py check   # list mistakes by sheet and row; changes nothing
+python tools/doctors_config.py sync    # update index.html and portal/assets/data.js
+```
+
+Commit and push the changes to publish them. Each browser applies the new configuration on its next visit, and for these fields the workbook wins over edits made inside the portal. To remove a doctor, set Status to Inactive so their history is kept. `python tools/doctors_config.py build --force` recreates the workbook from the site's current data. The tool needs `python -m pip install openpyxl`.
+
 ### Sign-in
 
 The public website (`index.html`) is the landing page and needs no login. The staff portal is only reachable through `portal/login.html` (linked as "Staff login" in the site footer); every portal page sends signed-out visitors there.

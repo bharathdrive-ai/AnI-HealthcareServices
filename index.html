@@ -569,6 +569,7 @@ const DEPTS=[
 const DAYNAMES=["Mon","Tue","Wed","Thu","Fri","Sat"];
 const DAY_FULL=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const OPD_DEPTS=DEPTS.filter(d=>!d.always); // Emergency has its own 24×7 row and no OPD booking
+/* >>> DOCTORS CONFIG — generated from config/doctors-config.xlsx by tools/doctors_config.py. Edit the workbook, not this block. */
 const DOCS=[
  {n:"Dr. Meera Iyer",q:"MD, DM (Cardiology)",s:"Cardiology",r:"Professor & Head",exp:22},
  {n:"Dr. Arjun Rao",q:"MS (Ortho), Fellowship Arthroplasty",s:"Orthopaedics",r:"Professor & Head",exp:18},
@@ -607,6 +608,9 @@ const DOCS=[
  {n:"Dr. Vivek Sharma",q:"MD (Radio-diagnosis)",s:"Radiology",r:"Associate Professor",exp:12},
  {n:"Dr. Nisha Agarwal",q:"DNB (Radiology)",s:"Radiology",r:"Assistant Professor",exp:5},
 ];
+const OPD_DAYS_BY_CODE={MED:[1,1,1,1,1,1],SUR:[1,1,1,1,1,1],CAR:[1,0,1,0,1,1],ORT:[1,1,0,1,1,1],OBG:[1,1,1,1,1,1],PED:[1,1,1,1,1,1],NEU:[0,1,0,1,0,1],ENT:[1,0,1,0,1,0],OPH:[1,1,1,1,1,1],EMR:[1,1,1,1,1,1],LAB:[1,1,1,1,1,1],RAD:[1,1,1,1,1,1]};
+/* <<< DOCTORS CONFIG */
+DEPTS.forEach(d=>{if(OPD_DAYS_BY_CODE[d.c])d.days=OPD_DAYS_BY_CODE[d.c];}); // OPD days from the workbook
 
 // Date and OPD board
 const now=new Date();
