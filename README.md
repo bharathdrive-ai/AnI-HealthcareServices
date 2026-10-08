@@ -1,6 +1,6 @@
 # AnI-HealthcareServices
 
-Single-page website for a teaching hospital and medical college: OPD board, departments, doctor finder, appointment request form, programmes and admissions.
+Single-page website for a teaching hospital and medical college: OPD board, departments, doctor finder, appointment request form, medical programs and admissions.
 
 | Page | Main (Vercel) | Mirror (GitHub Pages) |
 |---|---|---|
@@ -40,7 +40,7 @@ Open it from the header on the website, or use the AniBuddy page at `anibuddy/` 
 
 "MediAssist" in the header (next to Book appointment; a chat icon on smaller screens) opens **AniBuddy**, a help assistant. Files: `assets/mediassist.js`, `assets/mediassist.css`.
 
-- Answers from the site's own data: departments and OPD days, doctors and heads, live free slots for a doctor or department on a date ("cardiology slots tomorrow"), fees, booking/reschedule/check-in rules, holidays, visiting hours, pharmacy, blood bank, contacts, programmes and admissions.
+- Answers from the site's own data: departments and OPD days, doctors and heads, live free slots for a doctor or department on a date ("cardiology slots tomorrow"), fees, booking/reschedule/check-in rules, holidays, visiting hours, pharmacy, blood bank, contacts, medical programs and admissions.
 - FAQ knowledge base: `assets/faq-kb.js` holds **112 questions in 12 categories** (appointments, fees and insurance, doctors, emergency, admission and stay, lab and scans, pharmacy, visiting and facilities, records, mother and child, students, other help). Matching uses key phrases plus distinctive-word overlap (with plurals, word stems and spelling variants), so reworded questions find the right answer. Type "help" to browse by category. Answers use sample details; edit `faq-kb.js` to replace them — each entry is one question, its phrasings and its answer.
 - Understands everyday words (heart, kids, x-ray, eye) and dates (today, tomorrow, Friday, 12 Oct).
 - Safety: no medical advice; emergency words show 108 and Casualty; self-harm words show 108 and Tele-MANAS (14416). Asks for and stores no personal details.

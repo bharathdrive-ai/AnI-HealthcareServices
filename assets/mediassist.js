@@ -169,8 +169,8 @@ function changes(){const c=A().cfg();return say(`In the ${portalLink()}, open <b
 function checkin(){const c=A().cfg();return say(`On the day, open <b>My appointments</b> in the ${portalLink()} and tap <b>Check in</b> from ${c.checkInBeforeMins} minutes before your slot. You'll get a token like <b>MED-04</b> and can see how many people are ahead of you and the expected wait.`,["Book an appointment","OPD timings"]);}
 function visiting(){return say(`<b>Visiting hours</b><ul><li>Wards: 4:00–7:00 PM daily, one attendant pass per patient</li><li>ICU: 11:00–11:30 AM and 5:00–5:30 PM; family update at 5:30 PM</li><li>Pharmacy: open 24 hours, ground floor, Block A</li><li>Blood bank: 24 hours; donors welcome 9:00 AM–5:00 PM</li></ul>`,["Where is the hospital?","Emergency"]);}
 function contact(){return say(`<b>${SITE.name}</b><br>${SITE.address}<br>Casualty (24×7): <b>${SITE.casualty}</b><br>OPD desk: <b>${SITE.opd}</b><br>Student admissions: ${SITE.admissionsPhone} · ${SITE.admissionsEmail}`,["OPD timings","Visiting hours"]);}
-function programmes(){return say(`Medical programmes:<ul><li><b>MBBS</b> — 4.5 years + internship, NEET-UG, 150 seats</li><li><b>MD / MS</b> — 18 specialities, NEET-PG, 94 seats</li><li><b>DM / MCh</b> — 12 seats, NEET-SS</li><li><b>B.Sc Nursing</b> — 100 seats</li><li><b>B.Sc Allied Health</b> — 160 seats</li></ul>See ${link("#admissions","How to Apply")} for the 2027 steps, or call ${SITE.admissionsPhone}.`,["How to apply","Contact"]);}
-function apply(){return say(`MBBS 2027: qualify <b>NEET-UG</b> (May) → register for counselling (July) → list us in choice filling (July–Aug) → seat allotment (Aug) → foundation course starts (Sep). Details under ${link("#admissions","How to Apply")}.`,["Programmes","Contact"]);}
+function programmes(){return say(`Medical Programs:<ul><li><b>MBBS</b> — 4.5 years + internship, NEET-UG, 150 seats</li><li><b>MD / MS</b> — 18 specialities, NEET-PG, 94 seats</li><li><b>DM / MCh</b> — 12 seats, NEET-SS</li><li><b>B.Sc Nursing</b> — 100 seats</li><li><b>B.Sc Allied Health</b> — 160 seats</li></ul>See ${link("#admissions","How to Apply")} for the 2027 steps, or call ${SITE.admissionsPhone}.`,["How to apply","Contact"]);}
+function apply(){return say(`MBBS 2027: qualify <b>NEET-UG</b> (May) → register for counselling (July) → list us in choice filling (July–Aug) → seat allotment (Aug) → foundation course starts (Sep). Details under ${link("#admissions","How to Apply")}.`,["Medical Programs","Contact"]);}
 function insurance(){return say(`We offer <b>cashless care</b> under major insurance and government schemes, including Ayushman Bharat and CGHS. Please bring your card and photo ID; the insurance desk at OPD registration will confirm your cover.`,["Fees","Book an appointment"]);}
 function facilities(){return say(`We are a <b>1,050-bed</b> tertiary care hospital with <b>96 ICU beds</b>, <b>14 operating theatres</b>, a level-1 trauma centre, a 24-hour pharmacy and laboratory, and a medical institute on the same campus.`,["Which departments do you have?","Visiting hours"]);}
 function holidays(q){
@@ -231,7 +231,7 @@ function faqCategory(cat){
   const L=(kb()||[]).filter(e=>e.cat===cat);
   return say(`Common questions about <b>${esc(cat)}</b>:`,L.map(e=>e.q));
 }
-function fallback(){return say(`Sorry, I'm not sure about that yet. I can help with appointments and free slots, doctors, OPD days, fees, reports, admissions, visiting hours, emergency contacts and our programmes. For anything else, call the OPD desk on <b>${SITE.opd}</b>.`,["Browse all FAQs",...DEFAULT_CHIPS.slice(0,4)]);}
+function fallback(){return say(`Sorry, I'm not sure about that yet. I can help with appointments and free slots, doctors, OPD days, fees, reports, admissions, visiting hours, emergency contacts and our medical programs. For anything else, call the OPD desk on <b>${SITE.opd}</b>.`,["Browse all FAQs",...DEFAULT_CHIPS.slice(0,4)]);}
 
 function answer(text){
   const q=norm(text);
