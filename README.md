@@ -2,9 +2,12 @@
 
 Single-page website for a teaching hospital and medical college: OPD board, departments, doctor finder, appointment request form, programmes and admissions.
 
-Live site (main): https://anihealthcareservices.vercel.app
-Mirror (GitHub Pages): https://bharathdrive-ai.github.io/AnI-HealthcareServices/
-AniBuddy chat on its own page: https://anihealthcareservices.vercel.app/anibuddy/
+| Page | Main (Vercel) | Mirror (GitHub Pages) |
+|---|---|---|
+| Public website | https://anihealthcareservices.vercel.app | https://bharathdrive-ai.github.io/AnI-HealthcareServices/ |
+| AniBuddy chat | https://anihealthcareservices.vercel.app/anibuddy/ | https://bharathdrive-ai.github.io/AnI-HealthcareServices/anibuddy/ |
+| Patient Portal | https://anihealthcareservices.vercel.app/patient/ | https://bharathdrive-ai.github.io/AnI-HealthcareServices/patient/ |
+| Staff portal login | https://anihealthcareservices.vercel.app/portal/login.html | https://bharathdrive-ai.github.io/AnI-HealthcareServices/portal/login.html |
 
 Both deploy automatically on every push to `main`. They don't share browser data (bookings, staff sign-ins), so share one address — the Vercel link is the main one.
 
