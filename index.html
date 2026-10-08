@@ -246,6 +246,19 @@ table.prog td{padding:.9rem 1.1rem;border-bottom:1px solid var(--line);vertical-
 table.prog tr:last-child td{border-bottom:0}
 table.prog td:first-child b{font-family:var(--f-display);font-weight:400;font-size:1.05rem}
 table.prog .num{font-family:var(--f-mono);text-align:right}
+/* Phones and small tablets: each program becomes a card (label on the left, value on the right) instead of a sideways-scrolling table */
+@media (max-width:800px){
+  .table-wrap{overflow:visible;border:0;border-radius:0;background:none}
+  table.prog{min-width:0}
+  table.prog thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  table.prog,table.prog tbody,table.prog tr,table.prog td{display:block}
+  table.prog tr{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:.25rem 0 .4rem;margin-bottom:.75rem}
+  table.prog tr:last-child{margin-bottom:0}
+  table.prog td,table.prog tr:last-child td{border-bottom:0;padding:.35rem 1rem;display:flex;justify-content:space-between;align-items:baseline;gap:1rem;text-align:right}
+  table.prog td::before{content:attr(data-label);flex:none;text-align:left;font-family:var(--f-body);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  table.prog tbody tr td:first-child{display:block;text-align:left;padding:.65rem 1rem .6rem;margin-bottom:.2rem;border-bottom:1px solid var(--line)} /* beats the last-row rule above */
+  table.prog td:first-child::before{content:none}
+}
 .tag{font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--brass)}
 
 /* Admission steps */
@@ -449,14 +462,14 @@ footer a{color:inherit}
         <p class="big">Students see their first patient in the first semester, under supervision, in the hospital next door.</p>
       </div>
       <div class="table-wrap">
-        <table class="prog">
-          <thead><tr><th>Program</th><th>Duration</th><th>Entry</th><th style="text-align:right">Seats / year</th></tr></thead>
-          <tbody>
-            <tr><td><span class="tag">Undergraduate</span><br><b>MBBS</b></td><td>4.5 years + 1-year internship</td><td>NEET-UG, state &amp; MCC counselling</td><td class="num">150</td></tr>
-            <tr><td><span class="tag">Postgraduate</span><br><b>MD / MS</b> · 18 specialities</td><td>3 years</td><td>NEET-PG</td><td class="num">94</td></tr>
-            <tr><td><span class="tag">Super speciality</span><br><b>DM / MCh</b> · Cardiology, Neurology, Urology, CTVS</td><td>3 years</td><td>NEET-SS</td><td class="num">12</td></tr>
-            <tr><td><span class="tag">Nursing</span><br><b>B.Sc Nursing</b></td><td>4 years</td><td>10+2 with PCB, state entrance</td><td class="num">100</td></tr>
-            <tr><td><span class="tag">Allied health</span><br><b>B.Sc</b> · MLT, Radiology, Anaesthesia &amp; OT, Optometry</td><td>3 years + 1-year internship</td><td>10+2 with PCB, merit</td><td class="num">160</td></tr>
+        <table class="prog" role="table">
+          <thead role="rowgroup"><tr role="row"><th role="columnheader">Program</th><th role="columnheader">Duration</th><th role="columnheader">Entry</th><th role="columnheader" style="text-align:right">Seats / year</th></tr></thead>
+          <tbody role="rowgroup">
+            <tr role="row"><td role="cell" data-label="Program"><span class="tag">Undergraduate</span><br><b>MBBS</b></td><td role="cell" data-label="Duration">4.5 years + 1-year internship</td><td role="cell" data-label="Entry">NEET-UG, state &amp; MCC counselling</td><td role="cell" class="num" data-label="Seats / year">150</td></tr>
+            <tr role="row"><td role="cell" data-label="Program"><span class="tag">Postgraduate</span><br><b>MD / MS</b> · 18 specialities</td><td role="cell" data-label="Duration">3 years</td><td role="cell" data-label="Entry">NEET-PG</td><td role="cell" class="num" data-label="Seats / year">94</td></tr>
+            <tr role="row"><td role="cell" data-label="Program"><span class="tag">Super speciality</span><br><b>DM / MCh</b> · Cardiology, Neurology, Urology, CTVS</td><td role="cell" data-label="Duration">3 years</td><td role="cell" data-label="Entry">NEET-SS</td><td role="cell" class="num" data-label="Seats / year">12</td></tr>
+            <tr role="row"><td role="cell" data-label="Program"><span class="tag">Nursing</span><br><b>B.Sc Nursing</b></td><td role="cell" data-label="Duration">4 years</td><td role="cell" data-label="Entry">10+2 with PCB, state entrance</td><td role="cell" class="num" data-label="Seats / year">100</td></tr>
+            <tr role="row"><td role="cell" data-label="Program"><span class="tag">Allied health</span><br><b>B.Sc</b> · MLT, Radiology, Anaesthesia &amp; OT, Optometry</td><td role="cell" data-label="Duration">3 years + 1-year internship</td><td role="cell" data-label="Entry">10+2 with PCB, merit</td><td role="cell" class="num" data-label="Seats / year">160</td></tr>
           </tbody>
         </table>
       </div>
