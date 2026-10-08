@@ -2,7 +2,10 @@
 
 Single-page website for a teaching hospital and medical college: OPD board, departments, doctor finder, appointment request form, programmes and admissions.
 
-Live site: https://bharathdrive-ai.github.io/AnI-HealthcareServices/
+Live site (main): https://anihealthcareservices.vercel.app
+Mirror (GitHub Pages): https://bharathdrive-ai.github.io/AnI-HealthcareServices/
+
+Both deploy automatically on every push to `main`. They don't share browser data (bookings, staff sign-ins), so share one address — the Vercel link is the main one.
 
 All names, phone numbers, doctors and figures are placeholders.
 
