@@ -3,12 +3,16 @@
    OPD days, holidays, slot configuration and live free slots from the appointment engine).
    It gives no medical advice and does not ask for or store personal details. */
 (function(){
+/* Site root, worked out from this script's own address, so the chat also works on /anibuddy/. */
+const ROOT=(()=>{try{return new URL("../",document.currentScript.src).href;}catch(e){return "";}})();
+/* <body data-ma-page> = the standalone AniBuddy page: the chat fills the page and stays open. */
+const PAGE_MODE=()=>document.body&&document.body.hasAttribute("data-ma-page");
 const SITE={
   name:"AnI-HealthcareServices",
   casualty:"+91 80 4000 1000", opd:"+91 80 4000 1100", admissionsPhone:"+91 80 4000 2000",
   admissionsEmail:"admissions@ani-healthcareservices.example",
   address:"Hospital Road, Sector 12, Bengaluru 560 000, Karnataka",
-  portal:"patient/index.html",
+  portal:ROOT+"patient/index.html",
 };
 const SYN={ // everyday words → department code; earlier entries win (e.g. a child with fever → Paediatrics)
   EMR:["emergency","casualty","accident","trauma","ambulance"],
@@ -37,7 +41,7 @@ let ready=null;
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=()=>rej(new Error(src));document.head.appendChild(s);});}
 function ensureData(){
   if(ready)return ready;
-  ready=(async()=>{if(!window.SEED)await loadScript("portal/assets/data.js");if(!window.Portal)await loadScript("portal/assets/portal.js");if(!window.Appt)await loadScript("portal/assets/appt.js");if(!window.FAQ_KB)await loadScript("assets/faq-kb.js");})();
+  ready=(async()=>{if(!window.SEED)await loadScript(ROOT+"portal/assets/data.js");if(!window.Portal)await loadScript(ROOT+"portal/assets/portal.js");if(!window.Appt)await loadScript(ROOT+"portal/assets/appt.js");if(!window.FAQ_KB)await loadScript(ROOT+"assets/faq-kb.js");})();
   return ready;
 }
 const P=()=>window.Portal, A=()=>window.Appt, db=()=>window.Portal.db;
@@ -270,18 +274,20 @@ let panel,log,input,opened=false,lastFocus=null;
 function build(){
   panel=document.createElement("div");panel.className="ma-panel";panel.id="mediassist";panel.hidden=true;
   panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","false");panel.setAttribute("aria-labelledby","maTitle");
-  panel.innerHTML=`<div class="ma-head"><img class="ma-avatar" src="assets/anibuddy-128.webp" width="46" height="46" alt="" aria-hidden="true"><div class="ma-title"><b id="maTitle">AniBuddy</b><small>MediAssist · usually replies instantly</small></div><button type="button" class="ma-close" aria-label="Close MediAssist">✕</button></div>
+  panel.innerHTML=`<div class="ma-head"><img class="ma-avatar" src="${ROOT}assets/anibuddy-128.webp" width="46" height="46" alt="" aria-hidden="true"><div class="ma-title"><b id="maTitle">AniBuddy</b><small>MediAssist · usually replies instantly</small></div>${PAGE_MODE()?"":`<a class="ma-pop" href="${ROOT}anibuddy/" target="_blank" rel="noopener" aria-label="Open AniBuddy in its own page" title="Open in its own page">↗</a>`}<button type="button" class="ma-close" aria-label="Close MediAssist">✕</button></div>
     <div class="ma-log" role="log" aria-live="polite"></div>
     <form class="ma-form" autocomplete="off"><label for="maInput" class="ma-sr">Type your question</label><input id="maInput" maxlength="300" placeholder="Ask about doctors, slots, timings…"><button type="submit" aria-label="Send">➤</button></form>
     <p class="ma-note">AniBuddy shares hospital information, not medical advice. In an emergency call <b>108</b>.</p>`;
-  document.body.appendChild(panel);
+  (PAGE_MODE()&&document.getElementById("maMount")||document.body).appendChild(panel);
+  if(PAGE_MODE())panel.querySelector(".ma-close").hidden=true;
   log=panel.querySelector(".ma-log");input=panel.querySelector("input");
   panel.querySelector(".ma-close").onclick=close;
   panel.querySelector("form").onsubmit=e=>{e.preventDefault();const t=input.value.trim();if(!t)return;input.value="";ask(t);};
-  panel.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+  panel.addEventListener("keydown",e=>{if(e.key==="Escape"&&!PAGE_MODE())close();});
 }
 function bubble(who,html,chips=[]){
   const m=document.createElement("div");m.className="ma-msg "+who;m.innerHTML=html;log.appendChild(m);
+  m.querySelectorAll('a[href^="#"]').forEach(a=>{if(!document.getElementById(a.getAttribute("href").slice(1)))a.href=ROOT+"index.html"+a.getAttribute("href");});
   if(chips.length){const c=document.createElement("div");c.className="ma-chips";
     chips.forEach(t=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.onclick=()=>ask(t);c.appendChild(b);});log.appendChild(c);}
   log.scrollTop=log.scrollHeight;
@@ -307,6 +313,6 @@ function close(){
   if(lastFocus&&lastFocus.focus)lastFocus.focus();
 }
 document.addEventListener("click",e=>{const t=e.target.closest("[data-mediassist]");if(!t)return;e.preventDefault();panel&&!panel.hidden?close():open();});
-if(location.hash==="#mediassist")document.addEventListener("DOMContentLoaded",open);
+if(location.hash==="#mediassist"||PAGE_MODE())document.readyState==="loading"?document.addEventListener("DOMContentLoaded",open):open();
 window.MediAssist={open,close,answer:t=>answer(t),ensureData};
 })();

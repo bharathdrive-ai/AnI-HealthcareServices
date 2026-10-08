@@ -4,6 +4,7 @@ Single-page website for a teaching hospital and medical college: OPD board, depa
 
 Live site (main): https://anihealthcareservices.vercel.app
 Mirror (GitHub Pages): https://bharathdrive-ai.github.io/AnI-HealthcareServices/
+AniBuddy chat on its own page: https://anihealthcareservices.vercel.app/anibuddy/
 
 Both deploy automatically on every push to `main`. They don't share browser data (bookings, staff sign-ins), so share one address — the Vercel link is the main one.
 
@@ -31,6 +32,8 @@ All names, phone numbers, doctors and figures are placeholders.
 
 Shared code: `portal/assets/portal.css`, `portal.js` (shell, store, table component) and `data.js` (sample data).
 ### MediAssist (AniBuddy)
+
+Open it from the header on the website, or use the AniBuddy page at `anibuddy/` (https://anihealthcareservices.vercel.app/anibuddy/) to share as a direct link. The ↗ button in the chat header opens that page.
 
 "MediAssist" in the header (next to Book appointment; a chat icon on smaller screens) opens **AniBuddy**, a help assistant. Files: `assets/mediassist.js`, `assets/mediassist.css`.
 
@@ -107,6 +110,7 @@ flowchart TB
         INDEXF["index.html<br/>public website"]
         PATIENTF["patient/index.html<br/>Patient Portal"]
         PORTALF["portal/*.html<br/>login + 15 staff pages"]
+        MAPAGE["anibuddy/index.html<br/>AniBuddy on its own page"]
         DATAJS["portal/assets/data.js<br/>seed data + DOCTORS CONFIG block"]
         PORTALJS["portal/assets/portal.js<br/>shell, auth, store, migrations, CRUD"]
         APPTJS["portal/assets/appt.js<br/>appointment engine"]
@@ -119,7 +123,7 @@ flowchart TB
     Repo -->|"git push - auto deploy"| HOST["Vercel - main<br/>GitHub Pages - mirror"]
 
     subgraph Browser["Visitor's browser"]
-        SITE["Public website<br/>departments, OPD board,<br/>doctor finder, MediAssist"]
+        SITE["Public website<br/>departments, OPD board,<br/>doctor finder, MediAssist<br/>+ /anibuddy/ page"]
         PAT["Patient Portal<br/>sign in with mobile + DOB"]
         STAFF["Staff portal<br/>role-based pages"]
         LS[("localStorage<br/>jac.portal.* data<br/>jac.theme")]
