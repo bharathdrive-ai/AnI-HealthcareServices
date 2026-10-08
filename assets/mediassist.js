@@ -270,7 +270,7 @@ let panel,log,input,opened=false,lastFocus=null;
 function build(){
   panel=document.createElement("div");panel.className="ma-panel";panel.id="mediassist";panel.hidden=true;
   panel.setAttribute("role","dialog");panel.setAttribute("aria-modal","false");panel.setAttribute("aria-labelledby","maTitle");
-  panel.innerHTML=`<div class="ma-head"><div class="ma-avatar" aria-hidden="true">AB</div><div class="ma-title"><b id="maTitle">AniBuddy</b><small>MediAssist · usually replies instantly</small></div><button type="button" class="ma-close" aria-label="Close MediAssist">✕</button></div>
+  panel.innerHTML=`<div class="ma-head"><img class="ma-avatar" src="assets/anibuddy-128.webp" width="42" height="42" alt="" aria-hidden="true"><div class="ma-title"><b id="maTitle">AniBuddy</b><small>MediAssist · usually replies instantly</small></div><button type="button" class="ma-close" aria-label="Close MediAssist">✕</button></div>
     <div class="ma-log" role="log" aria-live="polite"></div>
     <form class="ma-form" autocomplete="off"><label for="maInput" class="ma-sr">Type your question</label><input id="maInput" maxlength="300" placeholder="Ask about doctors, slots, timings…"><button type="submit" aria-label="Send">➤</button></form>
     <p class="ma-note">AniBuddy shares hospital information, not medical advice. In an emergency call <b>108</b>.</p>`;
