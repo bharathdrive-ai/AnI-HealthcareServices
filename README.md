@@ -85,4 +85,244 @@ The public website (`index.html`) is the landing page and needs no login. The st
 
 **This is not real security.** The site is static, so the sign-in check runs in the visitor's browser and a technical visitor can bypass it. Today that only exposes the sample data, because all data lives in each visitor's own browser. Before real patient data goes in, move sign-in and data to a server-side service (for example Supabase, Firebase or an in-house API) that checks every request.
 
-Data is saved in the browser's localStorage only; use "Reset sample data" in the sidebar to start over. There is no server, login or real messaging yet.
+Data is saved in the browser's localStorage only; use "Reset sample data" in the sidebar to start over. There is no server or real messaging yet.
+
+## Architecture
+
+> Keep these diagrams current: when you add a page, a data key, a script or a new flow, update the matching diagram in the same commit. GitHub draws them from the Mermaid code below.
+
+### System overview
+
+The whole site is static files with no build step and no server. Every page runs in the visitor's browser, and each browser keeps its own copy of the data in localStorage, starting from the sample seed in `data.js`.
+
+```mermaid
+flowchart TB
+    subgraph Authoring["Maintenance - your PC"]
+        XLSX["config/doctors-config.xlsx<br/>doctors, weekly availability,<br/>OPD days, leave, slot settings"]
+        TOOL["tools/doctors_config.py<br/>check / sync / build"]
+        XLSX -->|"sync"| TOOL
+    end
+
+    subgraph Repo["GitHub repo - main branch"]
+        INDEXF["index.html<br/>public website"]
+        PATIENTF["patient/index.html<br/>Patient Portal"]
+        PORTALF["portal/*.html<br/>login + 15 staff pages"]
+        DATAJS["portal/assets/data.js<br/>seed data + DOCTORS CONFIG block"]
+        PORTALJS["portal/assets/portal.js<br/>shell, auth, store, migrations, CRUD"]
+        APPTJS["portal/assets/appt.js<br/>appointment engine"]
+        MAJS["assets/mediassist.js + faq-kb.js<br/>AniBuddy chatbot + 112 FAQs"]
+    end
+
+    TOOL -->|"rewrites generated blocks"| INDEXF
+    TOOL -->|"rewrites generated blocks"| DATAJS
+
+    Repo -->|"git push - auto deploy"| HOST["Vercel - main<br/>GitHub Pages - mirror"]
+
+    subgraph Browser["Visitor's browser"]
+        SITE["Public website<br/>departments, OPD board,<br/>doctor finder, MediAssist"]
+        PAT["Patient Portal<br/>sign in with mobile + DOB"]
+        STAFF["Staff portal<br/>role-based pages"]
+        LS[("localStorage<br/>jac.portal.* data<br/>jac.theme")]
+        SS[("sessionStorage<br/>jac.session staff<br/>jac.patient patient")]
+    end
+
+    HOST --> SITE
+    HOST --> PAT
+    HOST --> STAFF
+    SITE -.->|"MediAssist lazy-loads<br/>data.js, portal.js, appt.js"| LS
+    PAT --> LS
+    STAFF --> LS
+    PAT --> SS
+    STAFF --> SS
+```
+
+### How a portal page is built
+
+Each staff page loads the same scripts in this order. `portal.js` brings saved data up to date, checks the session, and then draws the shared layout around the page's own content.
+
+```mermaid
+flowchart LR
+    A["data.js<br/>window.SEED"] --> B["portal.js"]
+    B --> M["Migrations<br/>ACCOUNTS_VERSION<br/>DATA_VERSION<br/>DOCTORS_CONFIG version"]
+    M --> G{"Signed in and<br/>allowed to see<br/>this module?"}
+    G -->|"no"| L["login.html"]
+    G -->|"yes"| SH["Shell: header, sidebar<br/>of allowed pages, theme"]
+    SH --> P["Page script<br/>Portal.crud tables,<br/>forms, modals"]
+    P <-->|"db.get / db.set"| D[("localStorage<br/>jac.portal.*")]
+    P --> E["appt.js - appointment pages only"]
+    E <--> D
+```
+
+| Layer | File | Responsibility |
+|---|---|---|
+| Seed data | `portal/assets/data.js` | Sample records for every module, password hashes, version stamps, and the generated DOCTORS CONFIG block |
+| Shell and services | `portal/assets/portal.js` | Page list and sidebar, `db` store over localStorage, sign-in and sessions, role permissions, migrations, `Portal.crud` tables, modals, theme, audit log |
+| Appointment engine | `portal/assets/appt.js` | Slots, availability (OPD days, weekly pattern, holidays, leave), fees, booking, payment, cancellation and refunds, check-in tokens, queue, walk-ins, follow-ups |
+| Pages | `portal/*.html`, `patient/index.html` | Screens for each module; they read and write only through `db` and `Appt` |
+| Website and chatbot | `index.html`, `assets/mediassist.js`, `assets/faq-kb.js` | Public pages; AniBuddy answers FAQs and reads live slots through the same engine |
+
+### Sequence: staff sign-in and opening a page
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor S as Staff member
+    participant L as login.html
+    participant P as portal.js
+    participant LS as localStorage
+    participant SS as sessionStorage
+    participant Pg as Portal page
+
+    S->>L: Enter username and password
+    L->>P: Portal.signIn(username, password, remember)
+    P->>LS: Read lock counter jac.fail.username
+    alt Locked after 5 wrong attempts
+        P-->>L: Account locked for 5 minutes
+    else Not locked
+        P->>P: SHA-256 of jac:username:password
+        P->>LS: Load users and compare the hash
+        alt Hash does not match
+            P->>LS: Count the failed attempt
+            P-->>L: Incorrect, N attempts left
+        else Match and account Active
+            P->>SS: Save session - localStorage if Keep me signed in
+            P->>LS: Write lastLogin and audit entry
+            P-->>L: OK
+            L->>Pg: Open first page the role may see
+        end
+    end
+    Pg->>P: Load page
+    P->>SS: Session still valid? 20 min idle or 7 days
+    P->>LS: Role permissions for this module
+    alt No session or no permission
+        P-->>S: Redirect to login.html
+    else Allowed
+        P-->>Pg: Draw shell and sidebar, enable add / edit / delete per role
+    end
+```
+
+### Sequence: patient books and pays for an appointment
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Pt as Patient
+    participant PP as Patient Portal
+    participant A as appt.js
+    participant DB as db - localStorage
+
+    Pt->>PP: Sign in with mobile + date of birth, or register
+    PP->>DB: Find or create the patient record
+    Pt->>PP: Choose department, doctor and date
+    PP->>A: slots(doctor, date)
+    A->>DB: slotConfig, deptSchedule, doctorAvail
+    A->>DB: holidays, approved leaves, existing appointments
+    alt OPD closed, holiday or doctor on leave
+        A-->>PP: Reason - no slots that day
+        PP->>A: nextAvailable(doctor)
+        A-->>PP: Suggest the next open date
+    else Open
+        A-->>PP: Free and taken slots for the AM and PM sessions
+    end
+    Pt->>PP: Pick a slot
+    PP->>A: book(patient, doctor, date, slot)
+    A->>DB: Save appointment - status Booked
+    A-->>PP: Fee - general, specialist, or free follow-up within 14 days
+    Pt->>PP: Pay - simulated, no card details
+    PP->>A: pay(appointment, method)
+    A->>DB: Save payment record, mark paid
+    A-->>PP: Booking confirmed
+    Note over Pt,DB: Later: reschedule or cancel before the cut-off. A paid cancellation creates a pending refund for the admin.
+```
+
+### Sequence: visit day, from check-in to follow-up
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Pt as Patient
+    actor FD as Front desk
+    actor Dr as Doctor
+    participant A as appt.js
+    participant DB as db - localStorage
+
+    alt Patient checks in online, within 60 minutes of the slot
+        Pt->>A: checkIn(appointment)
+    else At the counter
+        FD->>A: checkIn(appointment), or walkIn() without a booking
+    end
+    A->>DB: Status Checked In, token like MED-02, queue position
+    Pt->>A: queue / position
+    A-->>Pt: Patients ahead and estimated wait
+    Dr->>A: callNext(doctor)
+    A->>DB: Next waiting patient - status In Consultation
+    Dr->>A: complete(appointment, notes)
+    A->>DB: Status Completed
+    opt Follow-up needed
+        Dr->>A: followUp(appointment, date, slot)
+        A->>DB: New Follow-up appointment, fee 0 within 14 days
+    end
+    Note over FD,DB: The admin can also skip, reassign to another doctor or mark No Show.
+```
+
+### Sequence: updating doctors and schedules from Excel
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Ad as Administrator
+    participant X as doctors-config.xlsx
+    participant T as doctors_config.py
+    participant R as GitHub repo
+    participant H as Vercel / GitHub Pages
+    participant B as Visitor's browser
+
+    Ad->>X: Edit doctors, weekly pattern, OPD days, leave, settings
+    Ad->>T: python tools/doctors_config.py check
+    T->>X: Read and validate every sheet
+    alt Errors found
+        T-->>Ad: List by sheet and row - nothing changed
+    else Valid
+        Ad->>T: python tools/doctors_config.py sync
+        T->>R: Rewrite DOCTORS CONFIG blocks in data.js and index.html with a new version
+        Ad->>R: Commit and push
+        R->>H: Auto deploy
+        B->>H: Next visit loads the new data.js
+        B->>B: portal.js sees a new config version
+        B->>B: Overwrite saved doctors, availability, OPD days, workbook leave, slot settings
+        Note over B: Other saved data such as bookings and non-doctor staff is kept
+    end
+```
+
+### Sequence: MediAssist (AniBuddy) answers a question
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Visitor
+    participant MA as mediassist.js
+    participant KB as faq-kb.js
+    participant A as appt.js and data
+
+    V->>MA: Open MediAssist and ask a question
+    MA->>A: First use - lazy-load data.js, portal.js, appt.js
+    MA->>KB: Lazy-load the FAQ knowledge base
+    MA->>MA: Route the question
+    alt Emergency or self-harm words
+        MA-->>V: Call 108 / Casualty or Tele-MANAS 14416
+    else Greeting or menu
+        MA-->>V: Quick-reply options
+    else Doctor, department or slots on a date
+        MA->>A: doctors, availability, slots
+        A-->>MA: Live schedule from this browser's data
+        MA-->>V: Answer with a link to book
+    else General question
+        MA->>KB: Score phrase and keyword matches
+        alt Good match
+            KB-->>MA: Best answer
+            MA-->>V: Answer
+        else No match
+            MA-->>V: Suggestions and the hospital phone number
+        end
+    end
+```
