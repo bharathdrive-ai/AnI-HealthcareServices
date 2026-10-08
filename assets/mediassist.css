@@ -52,3 +52,10 @@ body[data-ma-page] .ma-panel,body[data-ma-page] .ma-panel[hidden]{display:flex;p
   body[data-ma-page] .ma-panel{border-radius:0;border:0;box-shadow:none}
   body[data-ma-page].ma-open{overflow:auto}
 }
+@media (max-height:500px){
+  body[data-ma-page] .ma-panel{border-radius:0;border-top:0;border-bottom:0;box-shadow:none}
+  body[data-ma-page] .ma-head{padding:.35rem 1rem}
+  body[data-ma-page] .ma-avatar{width:34px;height:34px}
+  body[data-ma-page] .ma-form{padding:.4rem .7rem}
+  body[data-ma-page] .ma-note{padding:.15rem .9rem .3rem}
+}
