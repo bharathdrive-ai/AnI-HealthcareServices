@@ -380,7 +380,7 @@ function shell(){
   const isAdmin=user.role==="ROL0001";
   const app=document.createElement("div");app.className="app";
   app.innerHTML=`<aside class="side" id="side">
-      <a class="brand" href="${esc((auth.firstAllowed()||PAGES[0]).file)}"><span class="brand-logo"><picture><source srcset="../assets/ani-logo-96.webp 1x, ../assets/ani-logo-160.webp 2x" type="image/webp"><img src="../assets/ani-logo-96.png" width="84" height="34" alt="AnI-HealthcareServices logo"></picture></span>
+      <a class="brand" href="${esc((auth.firstAllowed()||PAGES[0]).file)}"><span class="brand-logo"><picture><source srcset="../assets/ani-logo-96.webp 1x, ../assets/ani-logo-160.webp 2x" type="image/webp"><img src="../assets/ani-logo-96.png" width="86" height="34" alt="AnI-HealthcareServices logo"></picture></span>
         <span><b>Staff Portal</b><small>MEDICAL INSTITUTE &amp; HOSPITAL</small></span></a>
       <nav aria-label="Portal">${groups.map(g=>`<div class="group">${esc(g)}</div>`+visible.filter(p=>p.group===g).map(p=>`<a href="${p.file}" ${p.external?'target="_blank" rel="noopener"':""} ${p===page?'aria-current="page"':""}><span class="no">${p.no}</span>${esc(p.title)}</a>`).join("")).join("")}
         <div class="group">Account</div>

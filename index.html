@@ -93,18 +93,16 @@ nav.main{order:1}
 :root[data-theme="dark"] .theme-btn .sun{display:none}:root[data-theme="dark"] .theme-btn .moon{display:block}
 .menu-btn{order:3}
 .brand{display:flex;align-items:center;gap:.7rem;text-decoration:none;color:var(--ink)}
-.logo{height:48px;width:auto;flex:none;display:block}
+.logo{height:46px;width:auto;flex:none;display:block}
 .brand-text{display:flex;flex-direction:column;border-left:1px solid var(--line);padding-left:.7rem}
 .brand-text b{font-family:var(--f-display);font-weight:400;font-size:1rem;line-height:1.15;white-space:nowrap}
 .brand-text small{font-size:.68rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 /* The logo has white details; give it a white badge wherever the background is dark */
-.logo-badge{background:#fff;border-radius:8px;padding:4px 8px}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header .logo{background:#fff;border-radius:8px;padding:3px 6px;height:44px}}
-:root[data-theme="dark"] header .logo{background:#fff;border-radius:8px;padding:3px 6px;height:44px}
+.logo-badge{display:inline-block} /* transparent logo: no badge needed */
 footer .logo-badge{display:inline-block;margin-bottom:.9rem}
 footer .logo-badge img{height:56px;width:auto;display:block}
-@media (max-width:420px){.logo{height:38px}.brand-text b{font-size:.88rem}.brand-text small{font-size:.62rem}.theme-btn{width:36px;height:36px}}
-@media (max-width:580px){.brand-text{display:none}}
+@media (max-width:420px){.logo{height:36px}.brand-text b{font-size:.88rem}.brand-text small{font-size:.62rem}.theme-btn{width:36px;height:36px}}
+@media (max-width:640px){.brand-text{display:none}}
 .brand b{font-family:var(--f-display);font-weight:400;font-size:1.15rem;display:block;line-height:1.1}
 .brand small{font-size:.72rem;color:var(--muted);letter-spacing:.04em}
 nav.main{display:flex;gap:1.1rem;align-items:center}
@@ -316,7 +314,7 @@ footer a{color:inherit}
 <header class="site">
   <div class="wrap">
     <a class="brand" href="#top" aria-label="AnI-HealthcareServices, home">
-      <picture><source srcset="assets/ani-logo-96.webp 1x, assets/ani-logo-160.webp 2x" type="image/webp"><img class="logo" src="assets/ani-logo-96.png" srcset="assets/ani-logo-96.png 1x, assets/ani-logo-160.png 2x" width="119" height="48" alt="AnI-HealthcareServices logo"></picture>
+      <picture><source srcset="assets/ani-logo-96.webp 1x, assets/ani-logo-160.webp 2x" type="image/webp"><img class="logo" src="assets/ani-logo-96.png" srcset="assets/ani-logo-96.png 1x, assets/ani-logo-160.png 2x" width="117" height="46" alt="AnI-HealthcareServices logo"></picture>
       <span class="brand-text"><b>AnI-HealthcareServices</b><small>Hospital &amp; Medical Institute</small></span>
     </a>
     <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch to dark theme" title="Switch theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg></button>
@@ -516,7 +514,7 @@ footer a{color:inherit}
   <div class="wrap">
     <div class="grid">
       <div>
-        <span class="logo-badge"><picture><source srcset="assets/ani-logo-160.webp" type="image/webp"><img src="assets/ani-logo-160.png" width="139" height="56" alt="AnI-HealthcareServices logo" loading="lazy"></picture></span>
+        <span class="logo-badge"><picture><source srcset="assets/ani-logo-160.webp" type="image/webp"><img src="assets/ani-logo-160.png" width="142" height="56" alt="AnI-HealthcareServices logo" loading="lazy"></picture></span>
         <h4>AnI-HealthcareServices</h4>
         <p>Hospital Road, Sector 12<br>Bengaluru 560 000, Karnataka</p>
       </div>

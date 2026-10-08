@@ -252,7 +252,7 @@ button.who:hover{border-color:var(--line)}
 @media (max-width:1000px){.split-7-5,.split-5-7{grid-template-columns:1fr}}
 
 /* JAC branding: logo badge, logo-wave stripe, theme switch */
-.brand-logo{background:#fff;border-radius:8px;padding:4px 7px;display:inline-flex;flex:none}
+.brand-logo{display:inline-flex;flex:none} /* transparent logo sits directly on the dark panel */
 .brand-logo img{height:34px;width:auto;display:block}
 .side .brand{gap:.65rem}
 .top{border-bottom:0}
