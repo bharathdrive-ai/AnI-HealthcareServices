@@ -296,8 +296,8 @@ button.who:hover{border-color:var(--line)}
 .split-5-7{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}
 @media (max-width:900px){.split-7-5,.split-5-7{grid-template-columns:1fr}}
 
-/* Phones: comfortable touch targets and readable small labels */
-@media (max-width:700px){
+/* Phones and touch tablets: comfortable touch targets and readable small labels */
+@media (max-width:700px),(pointer:coarse){
   .btn{min-height:38px}
   .btn.sm{min-height:34px;padding:.35rem .7rem}
   .btn.sm.link{padding-inline:.5rem}
@@ -307,5 +307,7 @@ button.who:hover{border-color:var(--line)}
 }
 button.bed small{font-size:11px}
 
-/* Phones: 16px text in form fields stops iPhone Safari from zooming in when a field is tapped */
-@media (max-width:700px){input,select,textarea{font-size:16px!important}}
+/* Phones and touch tablets: 16px text in form fields stops iPhone/iPad Safari from zooming in when a field is tapped */
+@media (max-width:700px),(pointer:coarse){input,select,textarea{font-size:16px!important}}
+/* Staff login: the link back to the website is a full-height tap target */
+.back-public{display:inline-flex;align-items:center;min-height:40px}
