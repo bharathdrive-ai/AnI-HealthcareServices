@@ -59,3 +59,15 @@ body[data-ma-page] .ma-panel,body[data-ma-page] .ma-panel[hidden]{display:flex;p
   body[data-ma-page] .ma-form{padding:.4rem .7rem}
   body[data-ma-page] .ma-note{padding:.15rem .9rem .3rem}
 }
+/* Department cards ("Find a doctor"): 2 per row in the panel, 3 on the wider AniBuddy page */
+.ma-msg.wide{max-width:100%;align-self:stretch}
+.ma-depts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:.65rem 0 .5rem}
+.ma-dept{display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;min-height:44px;padding:.6rem .7rem;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-top:3px solid var(--scrub);border-radius:10px;cursor:pointer}
+.ma-dept:hover,.ma-dept:focus-visible{background:var(--scrub-soft);border-color:var(--scrub)}
+.ma-dept b{font-size:.88rem;line-height:1.25;color:var(--scrub)}
+.ma-dept small{font-size:.76rem;line-height:1.35;color:var(--muted)}
+.ma-dept-meta{margin-top:auto;padding-top:.25rem;font-size:.72rem;font-weight:600;color:var(--ink)}
+.ma-dept.emr{border-top-color:var(--alert,#c2362b)}
+.ma-dept.emr b{color:var(--alert,#c2362b)}
+.ma-dept-tip{display:block;font-size:.8rem;color:var(--muted)}
+@media (min-width:640px){body[data-ma-page] .ma-depts{grid-template-columns:repeat(3,minmax(0,1fr))}}

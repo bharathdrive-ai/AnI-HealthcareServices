@@ -91,7 +91,7 @@ function pickYear(day,mon,yr){
 /* ---------- Answers ---------- */
 const link=(href,text)=>`<a href="${href}">${esc(text)}</a>`;
 const portalLink=()=>link(SITE.portal,"Patient Portal");
-const say=(html,chips=[])=>({html,chips});
+const say=(html,chips=[],wide=false)=>({html,chips,wide});
 const DEFAULT_CHIPS=["Book an appointment","OPD timings","Find a doctor","Emergency","Visiting hours","Browse all FAQs"];
 
 function emergency(){return say(`<b>If this is an emergency, call 108 now</b> or come straight to <b>Casualty, Gate 2</b> — open 24×7.<br>Casualty desk: <b>${SITE.casualty}</b>`,["Where is the hospital?","OPD timings"]);}
@@ -125,9 +125,25 @@ function deptHead(dept){
   const h=A().doctors(dept.id).find(d=>d.designation==="Professor & Head")||db().get("staff").find(s=>s.name===dept.head);
   return say(h?`The head of <b>${esc(dept.name)}</b> is <b>${esc(h.name)}</b>, ${esc(h.qual)}, with ${h.exp} years' experience.`:`I don't have the head of ${esc(dept.name)} on record.`,[`Doctors in ${dept.name}`,h&&A().isOpd(dept.id)?`Slots with ${h.name} tomorrow`:"OPD timings"].filter(Boolean));
 }
-function listDepts(){
-  return say(`We have 12 departments:<ul>${depts().map(d=>`<li>${esc(d.name)}${A().isOpd(d.id)?"":" — 24×7 walk-in"}</li>`).join("")}</ul>Ask me about any of them, for example "Cardiology days" or "ENT doctors".`,["Cardiology days","Doctors in Paediatrics","OPD timings"]);
+/* One-line summaries for the department cards (same wording as the website's department cards, shortened). */
+const DEPT_BLURB={EMR:"Casualty, trauma and ambulance",MED:"Fever, diabetes, BP, adult checks",SUR:"Hernia, gallbladder, laparoscopy",
+  CAR:"Heart, chest pain, echo, cath lab",ORT:"Fractures, joints, spine, sports",OBG:"Pregnancy, women's health",
+  PED:"Child health, vaccines, NICU",NEU:"Stroke, epilepsy, headache",ENT:"Ear, nose, throat, hearing",
+  OPH:"Eyes, cataract, glaucoma, retina",LAB:"Blood tests, biopsies, home samples",RAD:"X-ray, ultrasound, CT, MRI"};
+function opdShort(dept){
+  if(!A().isOpd(dept.id))return "Open 24×7 · walk-in";
+  const s=db().get("deptSchedule").find(x=>x.id===dept.id),n=["Mon","Tue","Wed","Thu","Fri","Sat"];
+  const on=s?n.filter((x,i)=>s.days[i]):n;
+  return on.length===6?"OPD Mon–Sat":"OPD "+on.join(", ");
 }
+/* Tappable card per department; a tap asks "Doctors in <department>". */
+function deptCards(intro){
+  const cards=depts().map(d=>{const n=A().doctors(d.id).length,emr=!A().isOpd(d.id);
+    return `<button type="button" class="ma-dept${emr?" emr":""}" data-ask="Doctors in ${esc(d.name)}"><b>${esc(d.name)}</b><small>${esc(DEPT_BLURB[d.code]||"")}</small><span class="ma-dept-meta">${esc(opdShort(d))} · ${n} doctor${n===1?"":"s"}</span></button>`;}).join("");
+  return say(`${intro}<div class="ma-depts">${cards}</div><span class="ma-dept-tip">Not sure which one? Tell me the problem, e.g. "knee pain" or "child with fever".</span>`,["Book an appointment","OPD timings"],true);
+}
+function listDepts(){return deptCards(`We have <b>${depts().length} departments</b>. Tap one to see its doctors:`);}
+const FINDER=["find a doctor","find doctor","find a specialist","find specialist","all doctors","list of doctors","doctors list","doctor list","our doctors","your doctors","show doctors","show me doctors","which doctors","doctors available","available doctors","departments","department list","list of departments","all departments","which departments","specialities","specialties","speciality","specialty"];
 function doctorsIn(dept){
   const docs=A().doctors(dept.id).sort((x,y)=>(y.designation==="Professor & Head")-(x.designation==="Professor & Head"));
   return say(`<b>${esc(dept.name)}</b> doctors:<ul>${docs.map(d=>`<li><b>${esc(d.name)}</b> — ${esc(d.designation)}, ${esc(d.qual)}, ${d.exp} yrs</li>`).join("")}</ul>${A().isOpd(dept.id)?`Ask "${esc(dept.name)} slots tomorrow" to see free times.`:"Walk in 24×7 at Casualty, Gate 2."}`,
@@ -252,6 +268,7 @@ function answer(text){
   const doc=findDoctor(q),dept=findDept(q),date=findDate(q);
   const slotWords=has(q,["slot","slots","availability","free slot","free slots","free time"]);
   if(doc)return doctorInfo(doc,date);
+  if(!dept&&!date&&has(q,FINDER)&&q.trim().split(" ").length<=6)return deptCards(`Choose a department to see its doctors:`);
   if(dept&&has(q,["head","hod","in charge","incharge","chief"]))return deptHead(dept);
   if(dept&&date&&has(q,["open","run","runs","working","available on","is there opd","opd on"])&&!slotWords)return deptOnDate(dept,date);
   if(dept&&(date||slotWords))return deptSlots(dept,date);
@@ -262,7 +279,7 @@ function answer(text){
   if(dept&&has(q,["appointment","appointments","checkup","check up","consult","consultation","see a","visit","book"]))return deptSlots(dept,date);
   if(m)return kbAnswer(m.e);
   // 5. General fallbacks
-  if(has(q,["find a doctor","find doctor","doctor","doctors"]))return say(`Which speciality do you need? For example "heart doctor", "doctors in ENT" or a doctor's name. You can also browse ${link("#doctors","Find a doctor")}.`,["Doctors in Cardiology","Doctors in Paediatrics","Doctors in Orthopaedics"]);
+  if(has(q,["find a doctor","find doctor","doctor","doctors","specialist"]))return deptCards(`Which speciality do you need? Tap a department to see its doctors, or type a doctor's name:`);
   if(has(q,["appointment","appointments","slot","slots","book","booking"]))return say(`Which department or doctor would you like? For example "cardiology slots tomorrow" or "next slot with Dr. Meera Iyer".`,["General Medicine slots today","Paediatrics slots tomorrow","How do I book an appointment?"]);
   if(dept)return symptomHelp(q,dept);
   if(has(q,["pain","fever","sick","ill","hurt","symptom","symptoms","problem","suffering"]))return symptomHelp(q,null);
@@ -285,8 +302,9 @@ function build(){
   panel.querySelector("form").onsubmit=e=>{e.preventDefault();const t=input.value.trim();if(!t)return;input.value="";ask(t);};
   panel.addEventListener("keydown",e=>{if(e.key==="Escape"&&!PAGE_MODE())close();});
 }
-function bubble(who,html,chips=[]){
-  const m=document.createElement("div");m.className="ma-msg "+who;m.innerHTML=html;log.appendChild(m);
+function bubble(who,html,chips=[],wide=false){
+  const m=document.createElement("div");m.className="ma-msg "+who+(wide?" wide":"");m.innerHTML=html;log.appendChild(m);
+  m.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>ask(b.dataset.ask));
   m.querySelectorAll('a[href^="#"]').forEach(a=>{if(!document.getElementById(a.getAttribute("href").slice(1)))a.href=ROOT+"index.html"+a.getAttribute("href");});
   if(chips.length){const c=document.createElement("div");c.className="ma-chips";
     chips.forEach(t=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.onclick=()=>ask(t);c.appendChild(b);});log.appendChild(c);}
@@ -298,7 +316,7 @@ async function ask(text){
   const typing=document.createElement("div");typing.className="ma-msg bot ma-typing";typing.innerHTML="<span></span><span></span><span></span>";typing.setAttribute("aria-label","AniBuddy is typing");log.appendChild(typing);log.scrollTop=log.scrollHeight;
   let r;
   try{await ensureData();r=answer(text);}catch(e){r=say(`Sorry, I couldn't load hospital information just now. Please call the OPD desk on <b>${SITE.opd}</b>.`);}
-  setTimeout(()=>{typing.remove();bubble("bot",r.html,r.chips);},350);
+  setTimeout(()=>{typing.remove();bubble("bot",r.html,r.chips,r.wide);},350);
 }
 function open(){
   if(!panel)build();
