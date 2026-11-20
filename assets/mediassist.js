@@ -92,7 +92,9 @@ function pickYear(day,mon,yr){
 const link=(href,text)=>`<a href="${href}">${esc(text)}</a>`;
 const portalLink=()=>link(SITE.portal,"Patient Portal");
 const say=(html,chips=[],wide=false)=>({html,chips,wide});
-const DEFAULT_CHIPS=["Book an appointment","OPD timings","Find a doctor","Emergency","Visiting hours","Browse all FAQs"];
+/* Quick buttons on the welcome message (and after "hi" / "thanks"). Each label is sent as if the visitor typed it. */
+const DEFAULT_CHIPS=["Book an appointment","Find a doctor","Free slots today","OPD timings","Consultation fees","Reschedule or cancel",
+  "Lab reports","Insurance & cashless","Visiting hours","Contact & directions","Emergency","Browse all FAQs"];
 
 function emergency(){return say(`<b>If this is an emergency, call 108 now</b> or come straight to <b>Casualty, Gate 2</b> — open 24×7.<br>Casualty desk: <b>${SITE.casualty}</b>`,["Where is the hospital?","OPD timings"]);}
 function selfHarm(){return say(`I'm really sorry you're going through this. You don't have to face it alone.<br><b>Call 108</b> or come to Casualty, Gate 2, any time — we're open 24×7.<br>You can also call <b>Tele-MANAS on 14416</b>, India's free 24×7 mental health helpline.`,["Contact"]);}
@@ -136,10 +138,10 @@ function opdShort(dept){
   const on=s?n.filter((x,i)=>s.days[i]):n;
   return on.length===6?"OPD Mon–Sat":"OPD "+on.join(", ");
 }
-/* Tappable card per department; a tap asks "Doctors in <department>". */
-function deptCards(intro){
+/* Tappable card per department; a tap asks "Doctors in <department>" (or another question built by ask(name)). */
+function deptCards(intro,ask=n=>`Doctors in ${n}`){
   const cards=depts().map(d=>{const n=A().doctors(d.id).length,emr=!A().isOpd(d.id);
-    return `<button type="button" class="ma-dept${emr?" emr":""}" data-ask="Doctors in ${esc(d.name)}"><b>${esc(d.name)}</b><small>${esc(DEPT_BLURB[d.code]||"")}</small><span class="ma-dept-meta">${esc(opdShort(d))} · ${n} doctor${n===1?"":"s"}</span></button>`;}).join("");
+    return `<button type="button" class="ma-dept${emr?" emr":""}" data-ask="${esc(ask(d.name))}"><b>${esc(d.name)}</b><small>${esc(DEPT_BLURB[d.code]||"")}</small><span class="ma-dept-meta">${esc(opdShort(d))} · ${n} doctor${n===1?"":"s"}</span></button>`;}).join("");
   return say(`${intro}<div class="ma-depts">${cards}</div><span class="ma-dept-tip">Not sure which one? Tell me the problem, e.g. "knee pain" or "child with fever".</span>`,["Book an appointment","OPD timings"],true);
 }
 function listDepts(){return deptCards(`We have <b>${depts().length} departments</b>. Tap one to see its doctors:`);}
@@ -272,6 +274,9 @@ function answer(text){
   if(dept&&has(q,["head","hod","in charge","incharge","chief"]))return deptHead(dept);
   if(dept&&date&&has(q,["open","run","runs","working","available on","is there opd","opd on"])&&!slotWords)return deptOnDate(dept,date);
   if(dept&&(date||slotWords))return deptSlots(dept,date);
+  if(slotWords&&q.trim().split(" ").length<=6){ // "free slots today" with no department: pick one from the cards
+    const T=P().today(),day=date||T,word=day===T?"today":day===P().addDays(T,1)?"tomorrow":fmtDay(day);
+    return deptCards(`Free slots <b>${word==="today"||word==="tomorrow"?word:"on "+word}</b> — choose a department:`,n=>`${n} slots ${word}`);}
   // 4. FAQ knowledge base
   if(strong)return kbAnswer(m.e);
   if(dept&&has(q,["doctor","doctors","who","specialist","consultant"]))return doctorsIn(dept);
@@ -307,7 +312,7 @@ function bubble(who,html,chips=[],wide=false){
   m.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>ask(b.dataset.ask));
   m.querySelectorAll('a[href^="#"]').forEach(a=>{if(!document.getElementById(a.getAttribute("href").slice(1)))a.href=ROOT+"index.html"+a.getAttribute("href");});
   if(chips.length){const c=document.createElement("div");c.className="ma-chips";
-    chips.forEach(t=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.onclick=()=>ask(t);c.appendChild(b);});log.appendChild(c);}
+    chips.forEach(t=>{const b=document.createElement("button");b.type="button";b.textContent=t;if(t==="Emergency")b.className="ma-chip-alert";b.onclick=()=>ask(t);c.appendChild(b);});log.appendChild(c);}
   log.scrollTop=log.scrollHeight;
 }
 async function ask(text){

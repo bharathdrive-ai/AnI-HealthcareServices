@@ -71,3 +71,6 @@ body[data-ma-page] .ma-panel,body[data-ma-page] .ma-panel[hidden]{display:flex;p
 .ma-dept.emr b{color:var(--alert,#c2362b)}
 .ma-dept-tip{display:block;font-size:.8rem;color:var(--muted)}
 @media (min-width:640px){body[data-ma-page] .ma-depts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* The Emergency quick button stands out in the alert colour */
+.ma-chips button.ma-chip-alert{border-color:var(--alert,#c2362b);color:var(--alert,#c2362b)}
+.ma-chips button.ma-chip-alert:hover{background:var(--alert-soft,#fbe9e7)}
