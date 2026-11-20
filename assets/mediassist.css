@@ -52,12 +52,16 @@ body[data-ma-page] .ma-panel,body[data-ma-page] .ma-panel[hidden]{display:flex;p
   body[data-ma-page] .ma-panel{border-radius:0;border:0;box-shadow:none}
   body[data-ma-page].ma-open{overflow:auto}
 }
+/* Short screens (phones in landscape): compact chrome so the conversation keeps room */
 @media (max-height:500px){
+  .ma-head{padding:.35rem 1rem}
+  .ma-avatar{width:34px;height:34px}
+  .ma-form{padding:.4rem .7rem}
+  .ma-note{padding:.15rem .9rem .3rem}
+  /* the website's floating panel becomes a full-screen sheet, as on phones in portrait */
+  body:not([data-ma-page]) .ma-panel{right:0;left:0;bottom:0;top:env(safe-area-inset-top,0px);width:100%;height:auto;border-radius:0;border:0}
+  body:not([data-ma-page]).ma-open{overflow:hidden}
   body[data-ma-page] .ma-panel{border-radius:0;border-top:0;border-bottom:0;box-shadow:none}
-  body[data-ma-page] .ma-head{padding:.35rem 1rem}
-  body[data-ma-page] .ma-avatar{width:34px;height:34px}
-  body[data-ma-page] .ma-form{padding:.4rem .7rem}
-  body[data-ma-page] .ma-note{padding:.15rem .9rem .3rem}
 }
 /* Department cards ("Find a doctor"): 2 per row in the panel, 3 on the wider AniBuddy page */
 .ma-msg.wide{max-width:100%;align-self:stretch}
