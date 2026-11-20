@@ -96,13 +96,27 @@ Data is saved in the browser's localStorage only; use "Reset sample data" in the
 
 ## Architecture
 
-> Keep these diagrams current: when you add a page, a data key, a script or a new flow, update the matching diagram in the same commit. GitHub draws them from the Mermaid code below.
+> Keep these diagrams current: when you add a page, a data key, a script or a new flow, update the matching diagram in the same commit. The sequence diagrams are drawn by GitHub from the Mermaid code below. The three flowcharts are SVG images, because GitHub's renderer currently fails to draw them; their source is in `docs/diagrams/*.mmd`. After editing a `.mmd` file, regenerate both images, for example:
+>
+> ```bash
+> npx -p @mermaid-js/mermaid-cli mmdc -i docs/diagrams/system-overview.mmd -o docs/diagrams/system-overview-light.svg -b white
+> npx -p @mermaid-js/mermaid-cli mmdc -i docs/diagrams/system-overview.mmd -o docs/diagrams/system-overview-dark.svg -t dark -b "#0d1117"
+> ```
 
 ### System overview
 
 The whole site is static files with no build step and no server. Every page runs in the visitor's browser, and each browser keeps its own copy of the data in localStorage, starting from the sample seed in `data.js`.
 
-```mermaid
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/system-overview-dark.svg">
+  <img alt="System overview: workbook and sync tool, GitHub repo, Vercel and GitHub Pages, and the visitor's browser" src="docs/diagrams/system-overview-light.svg">
+</picture>
+
+[Open full size](docs/diagrams/system-overview-light.svg) · [dark version](docs/diagrams/system-overview-dark.svg)
+
+<details><summary>Diagram source (Mermaid) — <code>docs/diagrams/system-overview.mmd</code></summary>
+
+```text
 flowchart TB
     subgraph Authoring["Maintenance - your PC"]
         XLSX["config/doctors-config.xlsx<br/>doctors, weekly availability,<br/>OPD days, leave, slot settings"]
@@ -144,11 +158,22 @@ flowchart TB
     STAFF --> SS
 ```
 
+</details>
+
 ### How a portal page is built
 
 Each staff page loads the same scripts in this order. `portal.js` brings saved data up to date, checks the session, and then draws the shared layout around the page's own content.
 
-```mermaid
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/portal-page-build-dark.svg">
+  <img alt="How a portal page is built: data.js, portal.js migrations, sign-in and permission check, shell, page script and storage" src="docs/diagrams/portal-page-build-light.svg">
+</picture>
+
+[Open full size](docs/diagrams/portal-page-build-light.svg) · [dark version](docs/diagrams/portal-page-build-dark.svg)
+
+<details><summary>Diagram source (Mermaid) — <code>docs/diagrams/portal-page-build.mmd</code></summary>
+
+```text
 flowchart LR
     A["data.js<br/>window.SEED"] --> B["portal.js"]
     B --> M["Migrations<br/>ACCOUNTS_VERSION<br/>DATA_VERSION<br/>DOCTORS_CONFIG version"]
@@ -160,6 +185,8 @@ flowchart LR
     P --> E["appt.js - appointment pages only"]
     E <--> D
 ```
+
+</details>
 
 | Layer | File | Responsibility |
 |---|---|---|
@@ -306,7 +333,16 @@ sequenceDiagram
 
 AniBuddy opens with 12 quick buttons. Each button sends its label as if the visitor typed it. "Find a doctor" and "Free slots today" reply with a tappable card for each of the 12 departments; a tap sends a follow-up question for that department.
 
-```mermaid
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/anibuddy-buttons-dark.svg">
+  <img alt="AniBuddy quick buttons and department cards" src="docs/diagrams/anibuddy-buttons-light.svg">
+</picture>
+
+[Open full size](docs/diagrams/anibuddy-buttons-light.svg) · [dark version](docs/diagrams/anibuddy-buttons-dark.svg)
+
+<details><summary>Diagram source (Mermaid) — <code>docs/diagrams/anibuddy-buttons.mmd</code></summary>
+
+```text
 flowchart TB
     W["Welcome: Hi, I'm AniBuddy<br/>12 quick buttons - also after hi / thanks"]
     W --> B2["Find a doctor"]
@@ -324,6 +360,8 @@ flowchart TB
     B11 --> R3["Call 108<br/>Casualty, Gate 2"]
     B12 --> R4["12 FAQ topics<br/>112 questions"]
 ```
+
+</details>
 
 The same cards also answer typed questions such as "list of doctors", "which departments do you have?", "specialities" and "free slots tomorrow". Emergency Care is always the first card, in red, and leads to the emergency information.
 

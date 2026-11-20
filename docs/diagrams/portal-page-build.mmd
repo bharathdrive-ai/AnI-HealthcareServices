@@ -1,0 +1,10 @@
+flowchart LR
+    A["data.js<br/>window.SEED"] --> B["portal.js"]
+    B --> M["Migrations<br/>ACCOUNTS_VERSION<br/>DATA_VERSION<br/>DOCTORS_CONFIG version"]
+    M --> G{"Signed in and<br/>allowed to see<br/>this module?"}
+    G -->|"no"| L["login.html"]
+    G -->|"yes"| SH["Shell: header, sidebar<br/>of allowed pages, theme"]
+    SH --> P["Page script<br/>Portal.crud tables,<br/>forms, modals"]
+    P <-->|"db.get / db.set"| D[("localStorage<br/>jac.portal.*")]
+    P --> E["appt.js - appointment pages only"]
+    E <--> D

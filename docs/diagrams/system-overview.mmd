@@ -1,0 +1,39 @@
+flowchart TB
+    subgraph Authoring["Maintenance - your PC"]
+        XLSX["config/doctors-config.xlsx<br/>doctors, weekly availability,<br/>OPD days, leave, slot settings"]
+        TOOL["tools/doctors_config.py<br/>check / sync / build"]
+        XLSX -->|"sync"| TOOL
+    end
+
+    subgraph Repo["GitHub repo - main branch"]
+        INDEXF["index.html<br/>public website"]
+        PATIENTF["patient/index.html<br/>Patient Portal"]
+        PORTALF["portal/*.html<br/>login + 15 staff pages"]
+        MAPAGE["anibuddy/index.html<br/>AniBuddy on its own page"]
+        DATAJS["portal/assets/data.js<br/>seed data + DOCTORS CONFIG block"]
+        PORTALJS["portal/assets/portal.js<br/>shell, auth, store, migrations, CRUD"]
+        APPTJS["portal/assets/appt.js<br/>appointment engine"]
+        MAJS["assets/mediassist.js + faq-kb.js<br/>AniBuddy chatbot + 112 FAQs"]
+    end
+
+    TOOL -->|"rewrites generated blocks"| INDEXF
+    TOOL -->|"rewrites generated blocks"| DATAJS
+
+    Repo -->|"git push - auto deploy"| HOST["Vercel - main<br/>GitHub Pages - mirror"]
+
+    subgraph Browser["Visitor's browser"]
+        SITE["Public website<br/>departments, OPD board,<br/>doctor finder, MediAssist<br/>+ /anibuddy/ page"]
+        PAT["Patient Portal<br/>sign in with mobile + DOB"]
+        STAFF["Staff portal<br/>role-based pages"]
+        LS[("localStorage<br/>jac.portal.* data<br/>jac.theme")]
+        SS[("sessionStorage<br/>jac.session staff<br/>jac.patient patient")]
+    end
+
+    HOST --> SITE
+    HOST --> PAT
+    HOST --> STAFF
+    SITE -.->|"MediAssist lazy-loads<br/>data.js, portal.js, appt.js"| LS
+    PAT --> LS
+    STAFF --> LS
+    PAT --> SS
+    STAFF --> SS
