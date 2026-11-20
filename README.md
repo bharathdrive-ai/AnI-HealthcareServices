@@ -302,7 +302,32 @@ sequenceDiagram
     end
 ```
 
-### Sequence: MediAssist (AniBuddy) answers a question
+### AniBuddy: quick buttons and department cards
+
+AniBuddy opens with 12 quick buttons. Each button sends its label as if the visitor typed it. "Find a doctor" and "Free slots today" reply with a tappable card for each of the 12 departments; a tap sends a follow-up question for that department.
+
+```mermaid
+flowchart TB
+    W["Welcome: Hi, I'm AniBuddy<br/>12 quick buttons - also after hi / thanks"]
+    W --> B2["Find a doctor"]
+    W --> B3["Free slots today"]
+    W --> INFO["Book an appointment<br/>OPD timings<br/>Consultation fees<br/>Reschedule or cancel<br/>Lab reports<br/>Insurance & cashless<br/>Visiting hours<br/>Contact & directions"]
+    W --> B11["Emergency - red button"]
+    W --> B12["Browse all FAQs"]
+
+    B2 --> DC1["12 department cards<br/>name, summary,<br/>OPD days, doctor count"]
+    B3 --> DC2["12 department cards<br/>for today"]
+    DC1 -->|"tap a card"| R1["Doctors in that department<br/>designation, qualification,<br/>experience"]
+    DC2 -->|"tap a card"| R2["That department's free times<br/>per doctor, next available,<br/>Patient Portal link"]
+    DC1 -.->|"Emergency Care card"| R3
+    INFO --> R5["Answer from live data<br/>or the FAQ knowledge base"]
+    B11 --> R3["Call 108<br/>Casualty, Gate 2"]
+    B12 --> R4["12 FAQ topics<br/>112 questions"]
+```
+
+The same cards also answer typed questions such as "list of doctors", "which departments do you have?", "specialities" and "free slots tomorrow". Emergency Care is always the first card, in red, and leads to the emergency information.
+
+### Sequence: AniBuddy answers a question
 
 ```mermaid
 sequenceDiagram
@@ -312,23 +337,36 @@ sequenceDiagram
     participant KB as faq-kb.js
     participant A as appt.js and data
 
-    V->>MA: Open MediAssist and ask a question
+    V->>MA: Open AniBuddy - website panel or /anibuddy/ page
+    MA-->>V: Greeting and 12 quick buttons
+    V->>MA: Tap a button or type a question
     MA->>A: First use - lazy-load data.js, portal.js, appt.js
     MA->>KB: Lazy-load the FAQ knowledge base
     MA->>MA: Route the question
     alt Emergency or self-harm words
         MA-->>V: Call 108 / Casualty or Tele-MANAS 14416
     else Greeting or menu
-        MA-->>V: Quick-reply options
-    else Doctor, department or slots on a date
+        MA-->>V: Quick buttons or FAQ topics
+    else A doctor's name, or a department with a date or slots
         MA->>A: doctors, availability, slots
         A-->>MA: Live schedule from this browser's data
         MA-->>V: Answer with a link to book
+    else Find a doctor, list of doctors, which departments
+        MA->>A: departments, OPD days, active doctors
+        MA-->>V: 12 department cards
+        V->>MA: Tap a card - sends Doctors in that department
+        MA-->>V: That department's doctors
+    else Free slots with no department
+        MA->>A: departments, OPD days, active doctors
+        MA-->>V: 12 department cards for that day
+        V->>MA: Tap a card - sends that department's slots for the day
+        MA->>A: slots for each doctor that day
+        MA-->>V: Free times and the next available slot
     else General question
         MA->>KB: Score phrase and keyword matches
         alt Good match
             KB-->>MA: Best answer
-            MA-->>V: Answer
+            MA-->>V: Answer and related questions
         else No match
             MA-->>V: Suggestions and the hospital phone number
         end
